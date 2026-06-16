@@ -1,0 +1,31 @@
+"Black White Güzellik Salonu & Kuaför" adında, modern ve lüks görünümlü tek sayfalık (Single Page Application mantığında) bir web sitesi oluşturmanı istiyorum. Sitede Tailwind CSS, FontAwesome ikonları ve Montserrat yazı tipi kullanılmalı.
+
+Tasarım ve Renk Kuralları:
+
+Sitenin ana teması koyu (dark mode) olacak.
+
+Sitede şu özel renk paleti tonlarını tanımla ve butonlarda, geçişlerde, vurgularda kullan: Gül Kurusu (#b84d5b), Soft Pembe (#e8a5b2), Lüks Nude/Karamel (#bd8c74), Şampanya Köpüğü/Krem (#e6dac7) ve Çikolata Kahvesi (#54352b).
+
+Sitede Olması Gereken Sayfalar/Modüller:
+
+Navigasyon & Banner: Üstte "Ordu Altınordu'da Lüks Hizmet Deneyimi" yazan şık bir şerit. "BW" harflerinden oluşan lüks bir logo ve menü linkleri (Anasayfa, Hakkımızda, Fiyat Listesi, Koleksiyon, Mağaza, İletişim).
+
+Hero Bölümü: Arka planda kuaför temalı estetik bir görsel (Unsplash'ten çekilebilir) ve "Online Randevu Al" butonu.
+
+Hızlı Randevu Sistemi (Form): Ad Soyad, Telefon, Hizmet Kategorisi (Saç, Makyaj, Gelin Paketi, Manikür, Ağda), Uzman Seçimi, Tarih ve Saat seçilebilen interaktif bir form.
+
+Uzman Kadromuz: Gülcan K. (Saç), Buse T. (Makyaj) ve Zeynep A. (Tırnak) için kartvizit şeklinde personel tanıtımları.
+
+Müşteri Yorumları: Şık kutular içinde simüle edilmiş Google ve Instagram müşteri değerlendirmeleri.
+
+Fiyat Listesi: Detaylı saç kesim, dip boya, ombre (5.000 TL'den başlayan), gelin paketleri (12.500 TL), manikür/pedikür ve tüm vücut ağda (2.000 TL) gibi hizmetlerin şeffaf listesi.
+
+Koleksiyon (Galeri): Saç ve Tırnak modelleri diye filtrelenebilen estetik bir portfolyo alanı.
+
+Mağaza & Sepet: Profesyonel salon ürünlerinin (Şampuan, Saç Yağı vb.) listelendiği, çalışan bir "Sepete Ekle" fonksiyonu, sağdan açılan bir sepet çekmecesi ve simüle edilmiş bir kredi kartı ödeme ekranı.
+
+İletişim & Canlı Destek: Ordu Altınordu adres bilgileri, telefonlar, Instagram linki ve sağ altta tıklayınca açılan interaktif bir "Canlı Destek" sohbet penceresi.
+
+Gizli Admin Paneli: Giriş yapıldığında (kullanıcı adı 'admin' ise) gelen randevuları ve mesajları listeleyen bir simüle yönetim alanı.
+
+Lütfen tüm bu özellikleri JavaScript fonksiyonları eksiksiz çalışacak şekilde tek bir yapıda birleştir ve responsive (mobil uyumlu) yap.
