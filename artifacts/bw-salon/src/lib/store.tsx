@@ -99,12 +99,28 @@ export type StaffMember = {
   imageUrl: string; // empty = show initials avatar
 };
 
+export type ContactInfo = {
+  address: string;
+  phone1: string;
+  phone2: string;
+  email: string;
+  instagramHandle: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  whatsappNumber: string;
+  workingHoursWeekday: string;
+  workingHoursSunday: string;
+  mapUrl: string;
+  salonSlogan: string;
+};
+
 export type SiteContent = {
   heroImageUrl: string;
   logoImageUrl: string; // empty = show text "BW"
   storeProducts: StoreProduct[];
   galleryItems: GalleryItem[];
   staffMembers: StaffMember[];
+  contactInfo: ContactInfo;
 };
 
 const DEFAULT_SITE_CONTENT: SiteContent = {
@@ -133,6 +149,20 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     { id: "s2", name: "Buse T.", title: "Makyaj Sanatçısı", experience: "8 yıl deneyim", rating: 5.0, initials: "BT", tags: ["Gelin Makyajı", "Gece Makyajı"], imageUrl: "" },
     { id: "s3", name: "Zeynep A.", title: "Tırnak Tasarımcısı", experience: "6 yıl deneyim", rating: 4.8, initials: "ZA", tags: ["Kalıcı Oje", "Protez Tırnak"], imageUrl: "" },
   ],
+  contactInfo: {
+    address: "Altınordu, Ordu, Türkiye",
+    phone1: "+90 452 123 45 67",
+    phone2: "+90 532 987 65 43",
+    email: "info@blackwhitesalon.com",
+    instagramHandle: "@blackwhite_guzelliks",
+    instagramUrl: "https://instagram.com/blackwhite_guzelliks",
+    facebookUrl: "",
+    whatsappNumber: "+905329876543",
+    workingHoursWeekday: "Pzt - Cmt: 09:00 - 20:00",
+    workingHoursSunday: "Paz: 10:00 - 18:00",
+    mapUrl: "",
+    salonSlogan: "Ordu Altınordu'da Lüks Hizmet. Profesyonel kadromuzla güzelliğinize değer katıyoruz.",
+  },
 };
 
 const USER_COLORS = ["#b84d5b", "#bd8c74", "#e8a5b2", "#4caf7d", "#54352b"];

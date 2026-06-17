@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useStore } from "@/lib/store";
-import type { StaffMember } from "@/lib/store";
+import type { StaffMember, ContactInfo } from "@/lib/store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star } from "lucide-react";
+import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Mail, Instagram, MessageCircle, Clock, Facebook } from "lucide-react";
 
 function useImageInput(onResult: (dataUrl: string) => void) {
   const ref = useRef<HTMLInputElement>(null);
@@ -118,6 +118,13 @@ export function AdminContent() {
     toast({ title: "Başarılı", description: "Görsel eklendi." });
   };
 
+  const [contactForm, setContactForm] = useState<ContactInfo>({ ...siteContent.contactInfo });
+
+  const saveContact = () => {
+    updateSiteContent({ contactInfo: contactForm });
+    toast({ title: "Başarılı", description: "İletişim bilgileri güncellendi." });
+  };
+
   const [staffForm, setStaffForm] = useState<Omit<StaffMember, "id"> & { id?: string; tagsInput: string }>({
     ...EMPTY_STAFF,
     tagsInput: "",
@@ -151,11 +158,12 @@ export function AdminContent() {
 
   return (
     <Tabs defaultValue="hero" className="w-full">
-      <TabsList className="mb-6 grid w-full grid-cols-5 bg-background border border-border rounded-xl p-1">
+      <TabsList className="mb-6 grid w-full grid-cols-6 bg-background border border-border rounded-xl p-1">
         <TabsTrigger value="hero" className="text-xs md:text-sm data-[state=active]:bg-primary">Hero & Logo</TabsTrigger>
-        <TabsTrigger value="store" className="text-xs md:text-sm data-[state=active]:bg-primary">Mağaza Ürünleri</TabsTrigger>
+        <TabsTrigger value="store" className="text-xs md:text-sm data-[state=active]:bg-primary">Mağaza</TabsTrigger>
         <TabsTrigger value="gallery" className="text-xs md:text-sm data-[state=active]:bg-primary">Galeri</TabsTrigger>
         <TabsTrigger value="staff" className="text-xs md:text-sm data-[state=active]:bg-primary">Personel</TabsTrigger>
+        <TabsTrigger value="contact" className="text-xs md:text-sm data-[state=active]:bg-primary">İletişim</TabsTrigger>
         <TabsTrigger value="preview" className="text-xs md:text-sm data-[state=active]:bg-primary">Önizleme</TabsTrigger>
       </TabsList>
 
@@ -421,6 +429,95 @@ export function AdminContent() {
               </div>
             </div>
           ))}
+        </div>
+      </TabsContent>
+
+      {/* ── İLETİŞİM BİLGİLERİ ── */}
+      <TabsContent value="contact" className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h3 className="font-semibold text-lg">İletişim Bilgileri</h3>
+          <Button onClick={saveContact} className="bg-[#b84d5b] text-white hover:bg-[#b84d5b]/90">Kaydet</Button>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-5">
+          <div className="p-5 border border-border rounded-xl bg-background space-y-4">
+            <h4 className="font-medium text-sm flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> Adres & Konum</h4>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Adres</label>
+                <Input placeholder="Altınordu, Ordu, Türkiye" value={contactForm.address} onChange={e => setContactForm(f => ({ ...f, address: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Google Maps Embed URL <span className="text-muted-foreground/60">(harita için)</span></label>
+                <Input placeholder="https://maps.google.com/maps?..." value={contactForm.mapUrl} onChange={e => setContactForm(f => ({ ...f, mapUrl: e.target.value }))} />
+                <p className="text-xs text-muted-foreground/60 mt-1">Google Maps → Haritayı paylaş → Sayfaya ekle → src değerini yapıştırın</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 border border-border rounded-xl bg-background space-y-4">
+            <h4 className="font-medium text-sm flex items-center gap-2"><Phone className="w-4 h-4 text-primary" /> Telefon & E-Posta</h4>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Telefon 1</label>
+                <Input placeholder="+90 452 123 45 67" value={contactForm.phone1} onChange={e => setContactForm(f => ({ ...f, phone1: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Telefon 2 <span className="text-muted-foreground/60">(opsiyonel)</span></label>
+                <Input placeholder="+90 532 987 65 43" value={contactForm.phone2} onChange={e => setContactForm(f => ({ ...f, phone2: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">E-Posta</label>
+                <Input placeholder="info@blackwhitesalon.com" value={contactForm.email} onChange={e => setContactForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 border border-border rounded-xl bg-background space-y-4">
+            <h4 className="font-medium text-sm flex items-center gap-2"><Instagram className="w-4 h-4 text-primary" /> Sosyal Medya</h4>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Instagram Kullanıcı Adı</label>
+                <Input placeholder="@blackwhite_guzelliks" value={contactForm.instagramHandle} onChange={e => setContactForm(f => ({ ...f, instagramHandle: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Instagram Profil URL</label>
+                <Input placeholder="https://instagram.com/..." value={contactForm.instagramUrl} onChange={e => setContactForm(f => ({ ...f, instagramUrl: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block"><Facebook className="w-3 h-3 inline mr-1" />Facebook URL <span className="text-muted-foreground/60">(opsiyonel)</span></label>
+                <Input placeholder="https://facebook.com/..." value={contactForm.facebookUrl} onChange={e => setContactForm(f => ({ ...f, facebookUrl: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block"><MessageCircle className="w-3 h-3 inline mr-1" />WhatsApp Numarası</label>
+                <Input placeholder="+905329876543" value={contactForm.whatsappNumber} onChange={e => setContactForm(f => ({ ...f, whatsappNumber: e.target.value }))} />
+                <p className="text-xs text-muted-foreground/60 mt-1">Boşluksuz, başında + ile: +905XXXXXXXXX</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 border border-border rounded-xl bg-background space-y-4">
+            <h4 className="font-medium text-sm flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> Çalışma Saatleri & Slogan</h4>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Hafta içi / Cumartesi</label>
+                <Input placeholder="Pzt - Cmt: 09:00 - 20:00" value={contactForm.workingHoursWeekday} onChange={e => setContactForm(f => ({ ...f, workingHoursWeekday: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Pazar</label>
+                <Input placeholder="Paz: 10:00 - 18:00" value={contactForm.workingHoursSunday} onChange={e => setContactForm(f => ({ ...f, workingHoursSunday: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Footer Slogan</label>
+                <Textarea placeholder="Kısa tanıtım cümlesi..." value={contactForm.salonSlogan} onChange={e => setContactForm(f => ({ ...f, salonSlogan: e.target.value }))} className="min-h-[80px]" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-background/50 border border-border/50 rounded-xl text-xs text-muted-foreground">
+          <p className="font-medium text-foreground mb-1">💡 Bilgi</p>
+          <p>Kaydet butonuna tıkladığınızda tüm değişiklikler anında sitede yansır. Değişiklikleri kaydetmeden sekme değiştirirseniz form sıfırlanmaz.</p>
         </div>
       </TabsContent>
 
