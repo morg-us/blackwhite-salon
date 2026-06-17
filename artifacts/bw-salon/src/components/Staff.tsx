@@ -1,38 +1,12 @@
 import { motion } from "framer-motion";
 import { Star } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-const staffList = [
-  {
-    id: "1",
-    name: "Gülcan K.",
-    title: "Saç Uzmanı",
-    experience: "10 yıl deneyim",
-    rating: 4.9,
-    initials: "GK",
-    tags: ["Kesim", "Boya", "Keratin"],
-  },
-  {
-    id: "2",
-    name: "Buse T.",
-    title: "Makyaj Sanatçısı",
-    experience: "8 yıl deneyim",
-    rating: 5.0,
-    initials: "BT",
-    tags: ["Gelin Makyajı", "Gece Makyajı"],
-  },
-  {
-    id: "3",
-    name: "Zeynep A.",
-    title: "Tırnak Tasarımcısı",
-    experience: "6 yıl deneyim",
-    rating: 4.8,
-    initials: "ZA",
-    tags: ["Kalıcı Oje", "Protez Tırnak"],
-  }
-];
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useStore } from "@/lib/store";
 
 export function Staff() {
+  const { siteContent } = useStore();
+  const staffList = siteContent.staffMembers;
+
   return (
     <section id="staff" className="py-24 bg-background">
       <div className="container px-4 mx-auto">
@@ -58,6 +32,9 @@ export function Staff() {
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               
               <Avatar className="w-24 h-24 mb-6 border-2 border-primary/20 ring-4 ring-background">
+                {staff.imageUrl ? (
+                  <AvatarImage src={staff.imageUrl} alt={staff.name} className="object-cover" />
+                ) : null}
                 <AvatarFallback className="bg-muted text-xl font-serif text-primary">{staff.initials}</AvatarFallback>
               </Avatar>
 

@@ -88,11 +88,23 @@ export type GalleryItem = {
   label: string;
 };
 
+export type StaffMember = {
+  id: string;
+  name: string;
+  title: string;
+  experience: string;
+  rating: number;
+  initials: string;
+  tags: string[];
+  imageUrl: string; // empty = show initials avatar
+};
+
 export type SiteContent = {
   heroImageUrl: string;
   logoImageUrl: string; // empty = show text "BW"
   storeProducts: StoreProduct[];
   galleryItems: GalleryItem[];
+  staffMembers: StaffMember[];
 };
 
 const DEFAULT_SITE_CONTENT: SiteContent = {
@@ -115,6 +127,11 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     { id: "g6", category: "tirnak", url: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&q=80&w=800", label: "" },
     { id: "g7", category: "tirnak", url: "https://images.unsplash.com/photo-1599839619722-39751411ea63?auto=format&fit=crop&q=80&w=800", label: "" },
     { id: "g8", category: "tirnak", url: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=800", label: "" },
+  ],
+  staffMembers: [
+    { id: "s1", name: "Gülcan K.", title: "Saç Uzmanı", experience: "10 yıl deneyim", rating: 4.9, initials: "GK", tags: ["Kesim", "Boya", "Keratin"], imageUrl: "" },
+    { id: "s2", name: "Buse T.", title: "Makyaj Sanatçısı", experience: "8 yıl deneyim", rating: 5.0, initials: "BT", tags: ["Gelin Makyajı", "Gece Makyajı"], imageUrl: "" },
+    { id: "s3", name: "Zeynep A.", title: "Tırnak Tasarımcısı", experience: "6 yıl deneyim", rating: 4.8, initials: "ZA", tags: ["Kalıcı Oje", "Protez Tırnak"], imageUrl: "" },
   ],
 };
 
@@ -163,6 +180,9 @@ type StoreContextType = {
   deleteStoreProduct: (id: string) => void;
   addGalleryItem: (item: Omit<GalleryItem, "id">) => void;
   deleteGalleryItem: (id: string) => void;
+  addStaffMember: (s: Omit<StaffMember, "id">) => void;
+  updateStaffMember: (id: string, updates: Partial<StaffMember>) => void;
+  deleteStaffMember: (id: string) => void;
 };
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -341,6 +361,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const deleteStoreProduct = (id: string) => setSiteContent(prev => ({ ...prev, storeProducts: prev.storeProducts.filter(p => p.id !== id) }));
   const addGalleryItem = (item: Omit<GalleryItem, "id">) => setSiteContent(prev => ({ ...prev, galleryItems: [...prev.galleryItems, { ...item, id: uid() }] }));
   const deleteGalleryItem = (id: string) => setSiteContent(prev => ({ ...prev, galleryItems: prev.galleryItems.filter(p => p.id !== id) }));
+  const addStaffMember = (s: Omit<StaffMember, "id">) => setSiteContent(prev => ({ ...prev, staffMembers: [...prev.staffMembers, { ...s, id: uid() }] }));
+  const updateStaffMember = (id: string, updates: Partial<StaffMember>) => setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.map(s => s.id === id ? { ...s, ...updates } : s) }));
+  const deleteStaffMember = (id: string) => setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.filter(s => s.id !== id) }));
 
   return (
     <StoreContext.Provider value={{
@@ -353,7 +376,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       inventory, addInventoryProduct, updateInventoryProduct, deleteInventoryProduct,
       stockMovements, addStockMovement,
       users, currentUser, registerUser, loginUser, logoutUser, isAuthModalOpen, setIsAuthModalOpen,
-      siteContent, updateSiteContent, updateStoreProduct, addStoreProduct, deleteStoreProduct, addGalleryItem, deleteGalleryItem,
+      siteContent, updateSiteContent, updateStoreProduct, addStoreProduct, deleteStoreProduct, addGalleryItem, deleteGalleryItem, addStaffMember, updateStaffMember, deleteStaffMember,
     }}>
       {children}
     </StoreContext.Provider>
