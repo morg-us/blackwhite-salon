@@ -200,8 +200,11 @@ type StoreContextType = {
   registerUser: (name: string, email: string, password: string) => boolean;
   loginUser: (email: string, password: string) => boolean;
   logoutUser: () => void;
+  updateUser: (id: string, updates: Partial<Omit<SiteUser, "id">>) => boolean;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (isOpen: boolean) => void;
+  isProfileModalOpen: boolean;
+  setIsProfileModalOpen: (v: boolean) => void;
 
   siteContent: SiteContent;
   updateSiteContent: (updates: Partial<SiteContent>) => void;
@@ -234,6 +237,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<SiteUser[]>([]);
   const [currentUser, setCurrentUser] = useState<SiteUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const [siteContent, setSiteContent] = useState<SiteContent>(DEFAULT_SITE_CONTENT);
 
@@ -385,6 +389,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const logoutUser = () => setCurrentUser(null);
 
+  const updateUser = (id: string, updates: Partial<Omit<SiteUser, "id">>) => {
+    if (updates.email) {
+      const emailTaken = users.find(u => u.email === updates.email && u.id !== id);
+      if (emailTaken) return false;
+    }
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
+    setCurrentUser(prev => prev && prev.id === id ? { ...prev, ...updates } : prev);
+    return true;
+  };
+
   const updateSiteContent = (updates: Partial<SiteContent>) => setSiteContent(prev => ({ ...prev, ...updates }));
   const updateStoreProduct = (id: string, updates: Partial<StoreProduct>) => setSiteContent(prev => ({ ...prev, storeProducts: prev.storeProducts.map(p => p.id === id ? { ...p, ...updates } : p) }));
   const addStoreProduct = (p: Omit<StoreProduct, "id">) => setSiteContent(prev => ({ ...prev, storeProducts: [...prev.storeProducts, { ...p, id: uid() }] }));
@@ -405,7 +419,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       transactions, addTransaction, deleteTransaction,
       inventory, addInventoryProduct, updateInventoryProduct, deleteInventoryProduct,
       stockMovements, addStockMovement,
-      users, currentUser, registerUser, loginUser, logoutUser, isAuthModalOpen, setIsAuthModalOpen,
+      users, currentUser, registerUser, loginUser, logoutUser, updateUser, isAuthModalOpen, setIsAuthModalOpen, isProfileModalOpen, setIsProfileModalOpen,
       siteContent, updateSiteContent, updateStoreProduct, addStoreProduct, deleteStoreProduct, addGalleryItem, deleteGalleryItem, addStaffMember, updateStaffMember, deleteStaffMember,
     }}>
       {children}
