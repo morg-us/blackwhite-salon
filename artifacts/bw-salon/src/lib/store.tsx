@@ -38,6 +38,32 @@ export type Transaction = {
   paymentMethod: "nakit" | "kart" | "havale";
 };
 
+export type InventoryProduct = {
+  id: string;
+  barcode: string;
+  name: string;
+  category: string;
+  unit: string;
+  costPrice: number;
+  salePrice: number;
+  stock: number;
+  minStock: number;
+  note: string;
+};
+
+export type StockMovement = {
+  id: string;
+  date: string;
+  productId: string;
+  productName: string;
+  barcode: string;
+  type: "giris" | "cikis" | "duzeltme";
+  quantity: number;
+  reason: string;
+  note: string;
+  stockAfter: number;
+};
+
 type StoreContextType = {
   appointments: Appointment[];
   addAppointment: (app: Omit<Appointment, "id">) => void;
@@ -59,9 +85,17 @@ type StoreContextType = {
   transactions: Transaction[];
   addTransaction: (t: Omit<Transaction, "id" | "date">) => void;
   deleteTransaction: (id: string) => void;
+  inventory: InventoryProduct[];
+  addInventoryProduct: (p: Omit<InventoryProduct, "id">) => void;
+  updateInventoryProduct: (id: string, updates: Partial<InventoryProduct>) => void;
+  deleteInventoryProduct: (id: string) => void;
+  stockMovements: StockMovement[];
+  addStockMovement: (m: Omit<StockMovement, "id" | "date" | "stockAfter">) => void;
 };
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
+
+function uid() { return Math.random().toString(36).substring(2, 9); }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -70,27 +104,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [adisyonlar, setAdisyonlar] = useState<Adisyon[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [inventory, setInventory] = useState<InventoryProduct[]>([]);
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     try {
-      const storedAppointments = localStorage.getItem("bw_appointments");
-      const storedMessages = localStorage.getItem("bw_messages");
-      const storedCart = localStorage.getItem("bw_cart");
-      const storedOrders = localStorage.getItem("bw_orders");
-      const storedAdisyonlar = localStorage.getItem("bw_adisyonlar");
-      const storedTransactions = localStorage.getItem("bw_transactions");
-
-      if (storedAppointments) setAppointments(JSON.parse(storedAppointments));
-      if (storedMessages) setMessages(JSON.parse(storedMessages));
-      if (storedCart) setCart(JSON.parse(storedCart));
-      if (storedOrders) setOrders(JSON.parse(storedOrders));
-      if (storedAdisyonlar) setAdisyonlar(JSON.parse(storedAdisyonlar));
-      if (storedTransactions) setTransactions(JSON.parse(storedTransactions));
-    } catch (e) {
-      console.error("Error loading state", e);
-    }
+      const keys = ["bw_appointments","bw_messages","bw_cart","bw_orders","bw_adisyonlar","bw_transactions","bw_inventory","bw_stock_movements"];
+      const [a,m,c,o,ad,tr,inv,sm] = keys.map(k => localStorage.getItem(k));
+      if (a) setAppointments(JSON.parse(a));
+      if (m) setMessages(JSON.parse(m));
+      if (c) setCart(JSON.parse(c));
+      if (o) setOrders(JSON.parse(o));
+      if (ad) setAdisyonlar(JSON.parse(ad));
+      if (tr) setTransactions(JSON.parse(tr));
+      if (inv) setInventory(JSON.parse(inv));
+      if (sm) setStockMovements(JSON.parse(sm));
+    } catch (e) { console.error("Error loading state", e); }
     setIsLoaded(true);
   }, []);
 
@@ -102,22 +133,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("bw_orders", JSON.stringify(orders));
     localStorage.setItem("bw_adisyonlar", JSON.stringify(adisyonlar));
     localStorage.setItem("bw_transactions", JSON.stringify(transactions));
-  }, [appointments, messages, cart, orders, adisyonlar, transactions, isLoaded]);
+    localStorage.setItem("bw_inventory", JSON.stringify(inventory));
+    localStorage.setItem("bw_stock_movements", JSON.stringify(stockMovements));
+  }, [appointments, messages, cart, orders, adisyonlar, transactions, inventory, stockMovements, isLoaded]);
 
-  const addAppointment = (app: Omit<Appointment, "id">) => {
-    setAppointments(prev => [...prev, { ...app, id: Math.random().toString(36).substring(2, 9) }]);
-  };
+  const addAppointment = (app: Omit<Appointment, "id">) =>
+    setAppointments(prev => [...prev, { ...app, id: uid() }]);
 
-  const addMessage = (msg: Omit<Message, "id">) => {
-    setMessages(prev => [...prev, { ...msg, id: Math.random().toString(36).substring(2, 9) }]);
-  };
+  const addMessage = (msg: Omit<Message, "id">) =>
+    setMessages(prev => [...prev, { ...msg, id: uid() }]);
 
   const addToCart = (item: CartItem) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i);
-      }
+      if (existing) return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i);
       return [...prev, item];
     });
     setIsCartOpen(true);
@@ -131,23 +160,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.id !== id));
   const clearCart = () => setCart([]);
 
-  const addOrder = (order: Omit<Order, "id" | "date">) => {
-    setOrders(prev => [...prev, { ...order, id: Math.random().toString(36).substring(2, 9), date: new Date().toISOString() }]);
-  };
+  const addOrder = (order: Omit<Order, "id" | "date">) =>
+    setOrders(prev => [...prev, { ...order, id: uid(), date: new Date().toISOString() }]);
 
   const addAdisyon = (a: Omit<Adisyon, "id" | "date">) => {
-    const id = Math.random().toString(36).substring(2, 9);
+    const id = uid();
     const date = new Date().toISOString();
     setAdisyonlar(prev => [...prev, { ...a, id, date }]);
     if (a.status === "kapali") {
       setTransactions(prev => [...prev, {
-        id: Math.random().toString(36).substring(2, 9),
-        date,
-        type: "gelir",
-        category: "Adisyon",
+        id: uid(), date, type: "gelir", category: "Adisyon",
         description: `Adisyon #${id} — ${a.customerName}`,
-        amount: a.total,
-        paymentMethod: a.paymentMethod,
+        amount: a.total, paymentMethod: a.paymentMethod,
       }]);
     }
   };
@@ -158,13 +182,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const updated = { ...a, ...updates };
       if (updates.status === "kapali" && a.status !== "kapali") {
         setTransactions(t => [...t, {
-          id: Math.random().toString(36).substring(2, 9),
-          date: new Date().toISOString(),
-          type: "gelir",
-          category: "Adisyon",
+          id: uid(), date: new Date().toISOString(), type: "gelir", category: "Adisyon",
           description: `Adisyon #${id} kapatıldı — ${updated.customerName}`,
-          amount: updated.total,
-          paymentMethod: updated.paymentMethod,
+          amount: updated.total, paymentMethod: updated.paymentMethod,
         }]);
       }
       return updated;
@@ -173,11 +193,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const deleteAdisyon = (id: string) => setAdisyonlar(prev => prev.filter(a => a.id !== id));
 
-  const addTransaction = (t: Omit<Transaction, "id" | "date">) => {
-    setTransactions(prev => [...prev, { ...t, id: Math.random().toString(36).substring(2, 9), date: new Date().toISOString() }]);
-  };
+  const addTransaction = (t: Omit<Transaction, "id" | "date">) =>
+    setTransactions(prev => [...prev, { ...t, id: uid(), date: new Date().toISOString() }]);
 
   const deleteTransaction = (id: string) => setTransactions(prev => prev.filter(t => t.id !== id));
+
+  const addInventoryProduct = (p: Omit<InventoryProduct, "id">) =>
+    setInventory(prev => [...prev, { ...p, id: uid() }]);
+
+  const updateInventoryProduct = (id: string, updates: Partial<InventoryProduct>) =>
+    setInventory(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+
+  const deleteInventoryProduct = (id: string) => {
+    setInventory(prev => prev.filter(p => p.id !== id));
+    setStockMovements(prev => prev.filter(m => m.productId !== id));
+  };
+
+  const addStockMovement = (m: Omit<StockMovement, "id" | "date" | "stockAfter">) => {
+    setInventory(prev => prev.map(p => {
+      if (p.id !== m.productId) return p;
+      let newStock = p.stock;
+      if (m.type === "giris") newStock += m.quantity;
+      else if (m.type === "cikis") newStock = Math.max(0, newStock - m.quantity);
+      else newStock = m.quantity;
+      const stockAfter = newStock;
+      setStockMovements(sm => [...sm, { ...m, id: uid(), date: new Date().toISOString(), stockAfter }]);
+      return { ...p, stock: newStock };
+    }));
+  };
 
   return (
     <StoreContext.Provider value={{
@@ -187,6 +230,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       orders, addOrder,
       adisyonlar, addAdisyon, updateAdisyon, deleteAdisyon,
       transactions, addTransaction, deleteTransaction,
+      inventory, addInventoryProduct, updateInventoryProduct, deleteInventoryProduct,
+      stockMovements, addStockMovement,
     }}>
       {children}
     </StoreContext.Provider>
@@ -194,7 +239,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 }
 
 export function useStore() {
-  const context = useContext(StoreContext);
-  if (context === undefined) throw new Error("useStore must be used within a StoreProvider");
-  return context;
+  const ctx = useContext(StoreContext);
+  if (!ctx) throw new Error("useStore must be used within a StoreProvider");
+  return ctx;
 }

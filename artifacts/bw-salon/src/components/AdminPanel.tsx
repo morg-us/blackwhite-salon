@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { AdminFinance } from "@/components/AdminFinance";
+import { AdminStock } from "@/components/AdminStock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -104,12 +105,18 @@ export function AdminPanel() {
 
         {/* Main tabs */}
         <Tabs defaultValue="finans" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-4 bg-card border border-border rounded-xl p-1">
+          <TabsList className="mb-6 grid w-full grid-cols-5 bg-card border border-border rounded-xl p-1">
             <TabsTrigger
               value="finans"
               className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
-              Finansal Yönetim
+              Finansal
+            </TabsTrigger>
+            <TabsTrigger
+              value="stok"
+              className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Stok Takibi
             </TabsTrigger>
             <TabsTrigger
               value="randevular"
@@ -135,6 +142,13 @@ export function AdminPanel() {
           <TabsContent value="finans">
             <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg">
               <AdminFinance />
+            </div>
+          </TabsContent>
+
+          {/* ── Stok Takibi ── */}
+          <TabsContent value="stok">
+            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg">
+              <AdminStock />
             </div>
           </TabsContent>
 
