@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useStore } from "@/lib/store";
 
 export function Hero() {
+  const { siteContent } = useStore();
   const scrollToForm = () => {
     document.getElementById("appointment")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -11,7 +13,7 @@ export function Hero() {
       {/* Background Image & Overlay */}
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=2000')" }}
+        style={{ backgroundImage: `url('${siteContent.heroImageUrl}')` }}
       />
       <div className="absolute inset-0 z-0 bg-background/70 bg-gradient-to-t from-background via-background/40 to-background/60" />
 

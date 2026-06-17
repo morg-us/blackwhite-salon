@@ -1,18 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const images = [
-  { id: 1, category: "sac", url: "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=800" },
-  { id: 2, category: "sac", url: "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?auto=format&fit=crop&q=80&w=800" },
-  { id: 3, category: "sac", url: "https://images.unsplash.com/photo-1620331311520-246422fd82f9?auto=format&fit=crop&q=80&w=800" },
-  { id: 4, category: "sac", url: "https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&q=80&w=800" },
-  { id: 5, category: "tirnak", url: "https://images.unsplash.com/photo-1519014816548-bf5fe059e98b?auto=format&fit=crop&q=80&w=800" },
-  { id: 6, category: "tirnak", url: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&q=80&w=800" },
-  { id: 7, category: "tirnak", url: "https://images.unsplash.com/photo-1599839619722-39751411ea63?auto=format&fit=crop&q=80&w=800" },
-  { id: 8, category: "tirnak", url: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=800" },
-];
+import { useStore } from "@/lib/store";
 
 export function Gallery() {
+  const { siteContent } = useStore();
+  const images = siteContent.galleryItems;
   const [filter, setFilter] = useState("all");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 

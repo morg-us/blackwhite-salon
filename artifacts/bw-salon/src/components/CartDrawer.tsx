@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Minus, Plus, Trash2, CreditCard } from "lucide-react";
 
 export function CartDrawer() {
-  const { isCartOpen, setIsCartOpen, cart, updateCartItem, removeFromCart, clearCart, addOrder } = useStore();
+  const { isCartOpen, setIsCartOpen, cart, updateCartItem, removeFromCart, clearCart, addOrder, currentUser, setIsAuthModalOpen } = useStore();
   const { toast } = useToast();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -16,6 +16,14 @@ export function CartDrawer() {
   const [checkoutData, setCheckoutData] = useState({ name: "", card: "", exp: "", cvv: "" });
 
   const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+  const openCheckout = () => {
+    if (currentUser) {
+      setCheckoutData(prev => ({ ...prev, name: currentUser.name }));
+    }
+    setIsCartOpen(false);
+    setIsCheckoutOpen(true);
+  };
 
   const handleCheckout = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +34,9 @@ export function CartDrawer() {
       addOrder({
         items: [...cart],
         total,
-        customerName: checkoutData.name || "Misafir Müşteri"
+        customerName: checkoutData.name || "Misafir Müşteri",
+        userId: currentUser?.id,
+        userEmail: currentUser?.email
       });
       clearCart();
       setIsProcessing(false);
@@ -86,7 +96,7 @@ export function CartDrawer() {
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
               size="lg"
               disabled={cart.length === 0}
-              onClick={() => { setIsCartOpen(false); setIsCheckoutOpen(true); }}
+              onClick={openCheckout}
               data-testid="button-proceed-checkout"
             >
               Ödemeye Geç
@@ -108,6 +118,12 @@ export function CartDrawer() {
           </DialogHeader>
 
           <form onSubmit={handleCheckout} className="space-y-4 py-4">
+            {!currentUser && (
+              <div className="bg-primary/10 border border-primary/20 text-primary p-3 rounded-md text-sm mb-4 flex justify-between items-center">
+                <span>Misafir olarak devam ediyorsunuz.</span>
+                <Button variant="outline" size="sm" type="button" onClick={() => { setIsCheckoutOpen(false); setIsAuthModalOpen(true); }}>Giriş Yap</Button>
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-medium">Kart Üzerindeki İsim</label>
               <Input 
@@ -115,6 +131,8 @@ export function CartDrawer() {
                 value={checkoutData.name}
                 onChange={e => setCheckoutData({...checkoutData, name: e.target.value})}
                 placeholder="Örn: Ayşe Yılmaz"
+                readOnly={!!currentUser}
+                className={currentUser ? "bg-muted cursor-not-allowed" : ""}
               />
             </div>
             <div className="space-y-2">

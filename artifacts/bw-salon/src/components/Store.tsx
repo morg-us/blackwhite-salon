@@ -3,54 +3,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useStore, CartItem } from "@/lib/store";
 
-const products = [
-  {
-    id: "p1",
-    name: "Luxe Şampuan (Saç Bakım)",
-    description: "Günlük kullanım için nemlendirici lüks şampuan.",
-    price: 450,
-    image: "linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)",
-  },
-  {
-    id: "p2",
-    name: "Argan Saç Yağı",
-    description: "Saç uçlarını besleyen saf Fas argan yağı.",
-    price: 380,
-    image: "linear-gradient(135deg, #2a1f1f 0%, #1a1a1a 100%)",
-  },
-  {
-    id: "p3",
-    name: "Keratin Maske",
-    description: "Yıpranmış saçlar için yoğun onarıcı bakım maskesi.",
-    price: 520,
-    image: "linear-gradient(135deg, #1f2a24 0%, #1a1a1a 100%)",
-  },
-  {
-    id: "p4",
-    name: "Kalıcı Oje Seti",
-    description: "Profesyonel ev kullanımı için set.",
-    price: 290,
-    image: "linear-gradient(135deg, #2a1f26 0%, #1a1a1a 100%)",
-  },
-  {
-    id: "p5",
-    name: "Tırnak Bakım Yağı",
-    description: "Kütikülleri yumuşatan E vitaminli yağ.",
-    price: 220,
-    image: "linear-gradient(135deg, #1f222a 0%, #1a1a1a 100%)",
-  },
-  {
-    id: "p6",
-    name: "Gül Yüz Bakım Kremi",
-    description: "Saf gül özlü gece bakım kremi.",
-    price: 680,
-    image: "linear-gradient(135deg, #2a1f1f 0%, #1a1a1a 100%)",
-  },
-];
-
 export function Store() {
   const { toast } = useToast();
-  const { addToCart } = useStore();
+  const { addToCart, siteContent, currentUser, setIsAuthModalOpen } = useStore();
+  const products = siteContent.storeProducts;
 
   const handleAddToCart = (product: typeof products[0]) => {
     addToCart({
@@ -58,7 +14,7 @@ export function Store() {
       name: product.name,
       price: product.price,
       quantity: 1,
-      image: product.image
+      image: product.imageUrl
     });
     toast({
       title: "Sepete Eklendi",
@@ -79,12 +35,14 @@ export function Store() {
           {products.map(product => (
             <div key={product.id} className="bg-card rounded-2xl overflow-hidden border border-border flex flex-col group">
               <div 
-                className="w-full aspect-[4/3] flex items-center justify-center relative overflow-hidden"
-                style={{ background: product.image }}
+                className="w-full aspect-[4/3] flex items-center justify-center relative overflow-hidden bg-cover bg-center"
+                style={{ background: product.imageUrl.startsWith("http") ? `url(${product.imageUrl})` : product.imageUrl, backgroundSize: 'cover', backgroundPosition: 'center' }}
               >
-                <div className="w-32 h-32 rounded-full border border-white/10 flex items-center justify-center">
-                  <span className="font-serif italic text-white/30 text-2xl">BW</span>
-                </div>
+                {!product.imageUrl.startsWith("http") && (
+                  <div className="w-32 h-32 rounded-full border border-white/10 flex items-center justify-center">
+                    <span className="font-serif italic text-white/30 text-2xl">BW</span>
+                  </div>
+                )}
               </div>
               <div className="p-6 flex flex-col flex-1">
                 <h3 className="text-xl font-bold mb-2">{product.name}</h3>

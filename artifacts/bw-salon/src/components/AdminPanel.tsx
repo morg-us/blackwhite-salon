@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { AdminFinance } from "@/components/AdminFinance";
 import { AdminStock } from "@/components/AdminStock";
+import { AdminContent } from "@/components/AdminContent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -104,8 +105,14 @@ export function AdminPanel() {
         </div>
 
         {/* Main tabs */}
-        <Tabs defaultValue="finans" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-5 bg-card border border-border rounded-xl p-1">
+        <Tabs defaultValue="icerik" className="w-full">
+          <TabsList className="mb-6 grid w-full grid-cols-6 bg-card border border-border rounded-xl p-1">
+            <TabsTrigger
+              value="icerik"
+              className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              İçerik Yönetimi
+            </TabsTrigger>
             <TabsTrigger
               value="finans"
               className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -137,6 +144,13 @@ export function AdminPanel() {
               Siparişler ({orders.length})
             </TabsTrigger>
           </TabsList>
+
+          {/* ── İçerik Yönetimi ── */}
+          <TabsContent value="icerik">
+            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg">
+              <AdminContent />
+            </div>
+          </TabsContent>
 
           {/* ── Finansal Yönetim ── */}
           <TabsContent value="finans">
