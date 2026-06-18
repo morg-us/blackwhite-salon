@@ -58,8 +58,17 @@ function MainApp() {
 }
 
 function App() {
+  // Theme is initialized inside StoreProvider from localStorage.
+  // Apply dark mode on first load before provider initialises:
   useEffect(() => {
-    document.documentElement.classList.add("dark");
+    const saved = localStorage.getItem("bw_theme");
+    if (saved === "light") {
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.classList.add("dark");
+    }
+    const lang = localStorage.getItem("bw_language");
+    if (lang) document.documentElement.lang = lang;
   }, []);
 
   return (

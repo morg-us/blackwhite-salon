@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { User, Lock, ShoppingBag, Settings, LogOut } from "lucide-react";
+import { User, Lock, ShoppingBag, Settings, LogOut, Sun, Moon, Globe } from "lucide-react";
 
 export function ProfileModal() {
-  const { isProfileModalOpen, setIsProfileModalOpen, currentUser, updateUser, orders, logoutUser } = useStore();
+  const { isProfileModalOpen, setIsProfileModalOpen, currentUser, updateUser, orders, logoutUser, theme, setTheme, language, setLanguage } = useStore();
   const { toast } = useToast();
 
   const [profileName, setProfileName] = useState(currentUser?.name ?? "");
@@ -238,14 +238,55 @@ export function ProfileModal() {
 
             {/* ── AYARLAR ── */}
             <TabsContent value="settings" className="p-5 space-y-5 mt-0">
+
+              {/* Theme */}
+              <div>
+                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  {theme === "dark" ? <Moon className="w-4 h-4 text-primary" /> : <Sun className="w-4 h-4 text-yellow-400" />}
+                  Görünüm
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setTheme("dark")}
+                    className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${theme === "dark" ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"}`}
+                  >
+                    <Moon className="w-4 h-4" /> Karanlık
+                  </button>
+                  <button
+                    onClick={() => setTheme("light")}
+                    className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${theme === "light" ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"}`}
+                  >
+                    <Sun className="w-4 h-4" /> Aydınlık
+                  </button>
+                </div>
+              </div>
+
+              {/* Language */}
+              <div>
+                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-primary" /> Dil / Language
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setLanguage("tr")}
+                    className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${language === "tr" ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"}`}
+                  >
+                    🇹🇷 Türkçe
+                  </button>
+                  <button
+                    onClick={() => setLanguage("en")}
+                    className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${language === "en" ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"}`}
+                  >
+                    🇬🇧 English
+                  </button>
+                </div>
+              </div>
+
+              {/* Notifications */}
               <div>
                 <h4 className="font-medium text-sm mb-3">Bildirim Tercihleri</h4>
                 <div className="space-y-2">
-                  {[
-                    "Randevu hatırlatmaları",
-                    "Sipariş güncellemeleri",
-                    "Kampanya ve fırsatlar",
-                  ].map(label => (
+                  {["Randevu hatırlatmaları", "Sipariş güncellemeleri", "Kampanya ve fırsatlar"].map(label => (
                     <label key={label} className="flex items-center justify-between p-3 border border-border rounded-xl cursor-pointer hover:bg-muted/30 transition-colors">
                       <span className="text-sm">{label}</span>
                       <span className="relative inline-flex">

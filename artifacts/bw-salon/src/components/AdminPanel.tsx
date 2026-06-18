@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { LogOut } from "lucide-react";
+import { LogOut, Users, ShoppingBag, Calendar, MessageSquare, TrendingUp, Star, Trash2 } from "lucide-react";
 
 export function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -17,7 +17,7 @@ export function AdminPanel() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const { appointments, messages, orders } = useStore();
+  const { appointments, messages, orders, users, reviews, deleteReview, transactions } = useStore();
 
   useEffect(() => {
     const auth = sessionStorage.getItem("bw_admin_auth");
@@ -42,6 +42,17 @@ export function AdminPanel() {
     setPassword("");
   };
 
+  // Analytics
+  const totalRevenue = transactions.filter(t => t.type === "gelir").reduce((s, t) => s + t.amount, 0);
+  const avgRating = reviews.length
+    ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
+    : "—";
+  const todayAppts = appointments.filter(a => {
+    const d = new Date(a.date);
+    const today = new Date();
+    return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+  }).length;
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
@@ -53,32 +64,11 @@ export function AdminPanel() {
             <h1 className="text-2xl font-serif font-bold">Yönetici Girişi</h1>
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <Input
-                placeholder="Kullanıcı Adı"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                className="bg-background border-border"
-                data-testid="input-username"
-              />
-            </div>
-            <div>
-              <Input
-                type="password"
-                placeholder="Şifre"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="bg-background border-border"
-                data-testid="input-password"
-              />
-            </div>
+            <Input placeholder="Kullanıcı Adı" value={username} onChange={e => setUsername(e.target.value)} className="bg-background border-border" data-testid="input-username" />
+            <Input type="password" placeholder="Şifre" value={password} onChange={e => setPassword(e.target.value)} className="bg-background border-border" data-testid="input-password" />
             {error && <p className="text-destructive text-sm text-center">{error}</p>}
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" data-testid="btn-login">
-              Giriş Yap
-            </Button>
-            <Button type="button" variant="ghost" className="w-full" onClick={() => window.location.hash = ""}>
-              Ana Sayfaya Dön
-            </Button>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" data-testid="btn-login">Giriş Yap</Button>
+            <Button type="button" variant="ghost" className="w-full" onClick={() => window.location.hash = ""}>Ana Sayfaya Dön</Button>
           </form>
         </div>
       </div>
@@ -86,69 +76,138 @@ export function AdminPanel() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-background p-4 md:p-8">
+    <div className="min-h-screen w-full bg-background p-2 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6 bg-card p-4 rounded-xl border border-border">
+        <div className="flex justify-between items-center mb-4 bg-card p-3 md:p-4 rounded-xl border border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full border border-primary/50 flex items-center justify-center bg-background">
-              <span className="font-serif font-bold text-primary">BW</span>
+            <div className="w-9 h-9 rounded-full border border-primary/50 flex items-center justify-center bg-background">
+              <span className="font-serif font-bold text-sm text-primary">BW</span>
             </div>
             <div>
-              <h1 className="text-lg font-bold leading-tight">Admin Paneli</h1>
+              <h1 className="text-base font-bold leading-tight">Admin Paneli</h1>
               <p className="text-xs text-muted-foreground">Black White Güzellik Salonu</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2" data-testid="btn-logout">
-            <LogOut className="w-4 h-4" /> Çıkış
+          <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2 text-xs" data-testid="btn-logout">
+            <LogOut className="w-3.5 h-3.5" /> Çıkış
           </Button>
+        </div>
+
+        {/* Quick stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          {[
+            { icon: Users, label: "Kayıtlı Üye", value: users.length, color: "text-blue-400" },
+            { icon: Calendar, label: "Bugün Randevu", value: todayAppts, color: "text-green-400" },
+            { icon: ShoppingBag, label: "Toplam Sipariş", value: orders.length, color: "text-purple-400" },
+            { icon: TrendingUp, label: "Toplam Gelir", value: `${totalRevenue.toLocaleString()} TL`, color: "text-accent" },
+          ].map(stat => (
+            <div key={stat.label} className="bg-card border border-border rounded-xl p-3 md:p-4 flex items-center gap-3">
+              <stat.icon className={`w-7 h-7 ${stat.color} shrink-0`} />
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground truncate">{stat.label}</p>
+                <p className="text-lg font-bold leading-tight">{stat.value}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Main tabs */}
         <Tabs defaultValue="icerik" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-6 bg-card border border-border rounded-xl p-1">
-            <TabsTrigger
-              value="icerik"
-              className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              İçerik Yönetimi
-            </TabsTrigger>
-            <TabsTrigger
-              value="finans"
-              className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Finansal
-            </TabsTrigger>
-            <TabsTrigger
-              value="stok"
-              className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Stok Takibi
-            </TabsTrigger>
-            <TabsTrigger
-              value="randevular"
-              className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Randevular ({appointments.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="mesajlar"
-              className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Mesajlar ({messages.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="siparisler"
-              className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Siparişler ({orders.length})
-            </TabsTrigger>
+          <TabsList className="mb-4 flex w-full overflow-x-auto gap-1 bg-card border border-border rounded-xl p-1 h-auto">
+            {[
+              { value: "icerik", label: "İçerik" },
+              { value: "veri", label: `Üyeler (${users.length})` },
+              { value: "finans", label: "Finansal" },
+              { value: "stok", label: "Stok" },
+              { value: "randevular", label: `Randevular (${appointments.length})` },
+              { value: "yorumlar", label: `Yorumlar (${reviews.length})` },
+              { value: "mesajlar", label: `Mesajlar (${messages.length})` },
+              { value: "siparisler", label: `Siparişler (${orders.length})` },
+            ].map(tab => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="text-xs whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground shrink-0"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           {/* ── İçerik Yönetimi ── */}
           <TabsContent value="icerik">
             <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg">
               <AdminContent />
+            </div>
+          </TabsContent>
+
+          {/* ── Üye & Veri Analizi ── */}
+          <TabsContent value="veri">
+            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[
+                  { icon: Users, label: "Toplam Üye", value: users.length, sub: "Kayıtlı kullanıcı" },
+                  { icon: Star, label: "Ortalama Puan", value: avgRating, sub: `${reviews.length} yorum` },
+                  { icon: MessageSquare, label: "İletişim Formu", value: messages.length, sub: "Mesaj" },
+                ].map(s => (
+                  <div key={s.label} className="bg-background border border-border rounded-xl p-4 text-center">
+                    <s.icon className="w-8 h-8 text-primary mx-auto mb-2" />
+                    <p className="text-2xl font-bold">{s.value}</p>
+                    <p className="text-xs text-muted-foreground">{s.label}</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">{s.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-sm mb-3 text-muted-foreground uppercase tracking-wider">Kayıtlı Üyeler</h3>
+                {users.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground text-sm border border-border rounded-xl">
+                    Henüz kayıtlı üye bulunmamaktadır.
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-background">
+                        <TableRow>
+                          <TableHead>Üye</TableHead>
+                          <TableHead className="hidden sm:table-cell">E-Posta</TableHead>
+                          <TableHead className="hidden md:table-cell">Kayıt Tarihi</TableHead>
+                          <TableHead>Siparişler</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map(user => {
+                          const userOrders = orders.filter(o => o.userId === user.id || o.userEmail === user.email);
+                          return (
+                            <TableRow key={user.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                                    style={{ backgroundColor: user.avatarColor }}>
+                                    {user.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)}
+                                  </div>
+                                  <span className="font-medium text-sm truncate max-w-[100px] sm:max-w-none">{user.name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm text-muted-foreground truncate max-w-[160px]">{user.email}</TableCell>
+                              <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                                {format(new Date(user.createdAt), "dd MMM yyyy", { locale: tr })}
+                              </TableCell>
+                              <TableCell>
+                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${userOrders.length > 0 ? "bg-green-500/15 text-green-400" : "bg-muted text-muted-foreground"}`}>
+                                  {userOrders.length} sipariş
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
 
@@ -168,122 +227,135 @@ export function AdminPanel() {
 
           {/* ── Randevular ── */}
           <TabsContent value="randevular">
-            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg">
-              <div className="rounded-md border border-border overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-background">
-                    <TableRow>
-                      <TableHead>Tarih & Saat</TableHead>
-                      <TableHead>Müşteri</TableHead>
-                      <TableHead>Telefon</TableHead>
-                      <TableHead>Kategori</TableHead>
-                      <TableHead>Uzman</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {appointments.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          Kayıt bulunamadı.
+            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-background">
+                  <TableRow>
+                    <TableHead>Tarih & Saat</TableHead>
+                    <TableHead>Müşteri</TableHead>
+                    <TableHead className="hidden sm:table-cell">Telefon</TableHead>
+                    <TableHead className="hidden md:table-cell">Kategori</TableHead>
+                    <TableHead>Uzman</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {appointments.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Kayıt bulunamadı.</TableCell></TableRow>
+                  ) : (
+                    appointments.slice().reverse().map(app => (
+                      <TableRow key={app.id}>
+                        <TableCell className="font-medium text-sm">
+                          {format(new Date(app.date), "dd MMM yyyy", { locale: tr })}
+                          <br /><span className="text-accent">{app.time}</span>
                         </TableCell>
+                        <TableCell className="text-sm">{app.name}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm">{app.phone}</TableCell>
+                        <TableCell className="hidden md:table-cell capitalize text-sm">{app.category}</TableCell>
+                        <TableCell className="text-sm">{app.staff}</TableCell>
                       </TableRow>
-                    ) : (
-                      appointments.slice().reverse().map(app => (
-                        <TableRow key={app.id}>
-                          <TableCell className="font-medium">
-                            {format(new Date(app.date), "dd MMM yyyy", { locale: tr })}<br />
-                            <span className="text-accent">{app.time}</span>
-                          </TableCell>
-                          <TableCell>{app.name}</TableCell>
-                          <TableCell>{app.phone}</TableCell>
-                          <TableCell className="capitalize">{app.category}</TableCell>
-                          <TableCell className="capitalize">{app.staff}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          {/* ── Yorumlar ── */}
+          <TabsContent value="yorumlar">
+            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg">
+              {reviews.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Star className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                  <p>Henüz müşteri yorumu bulunmamaktadır.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {reviews.slice().reverse().map(r => (
+                    <div key={r.id} className="flex items-start gap-3 p-4 border border-border rounded-xl bg-background/50">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ backgroundColor: r.avatarColor }}>
+                        {r.userName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-semibold text-sm">{r.userName}</span>
+                          <div className="flex gap-0.5">
+                            {[1,2,3,4,5].map(i => <Star key={i} className={`w-3 h-3 ${i <= r.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />)}
+                          </div>
+                          {r.staffMember !== "Genel" && <span className="text-[10px] text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">{r.staffMember}</span>}
+                          <span className="text-xs text-muted-foreground ml-auto">{format(new Date(r.date), "dd MMM yyyy", { locale: tr })}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground italic">"{r.text}"</p>
+                      </div>
+                      <button onClick={() => deleteReview(r.id)} className="text-destructive hover:bg-destructive/10 p-1.5 rounded-lg transition-colors shrink-0">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
 
           {/* ── Mesajlar ── */}
           <TabsContent value="mesajlar">
-            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg">
-              <div className="rounded-md border border-border overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-background">
-                    <TableRow>
-                      <TableHead>Gönderen</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Mesaj</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {messages.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                          Kayıt bulunamadı.
-                        </TableCell>
+            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-background">
+                  <TableRow>
+                    <TableHead>Gönderen</TableHead>
+                    <TableHead className="hidden sm:table-cell">Email</TableHead>
+                    <TableHead>Mesaj</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {messages.length === 0 ? (
+                    <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">Kayıt bulunamadı.</TableCell></TableRow>
+                  ) : (
+                    messages.slice().reverse().map(msg => (
+                      <TableRow key={msg.id}>
+                        <TableCell className="font-medium text-sm whitespace-nowrap">{msg.name}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm">{msg.email}</TableCell>
+                        <TableCell className="text-sm max-w-xs break-words">{msg.message}</TableCell>
                       </TableRow>
-                    ) : (
-                      messages.slice().reverse().map(msg => (
-                        <TableRow key={msg.id}>
-                          <TableCell className="font-medium whitespace-nowrap">{msg.name}</TableCell>
-                          <TableCell>{msg.email}</TableCell>
-                          <TableCell className="max-w-md break-words">{msg.message}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </TabsContent>
 
           {/* ── Siparişler ── */}
           <TabsContent value="siparisler">
-            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg">
-              <div className="rounded-md border border-border overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-background">
-                    <TableRow>
-                      <TableHead>Tarih</TableHead>
-                      <TableHead>Müşteri</TableHead>
-                      <TableHead>Ürünler</TableHead>
-                      <TableHead className="text-right">Toplam Tutar</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                          Kayıt bulunamadı.
+            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-background">
+                  <TableRow>
+                    <TableHead>Tarih</TableHead>
+                    <TableHead>Müşteri</TableHead>
+                    <TableHead className="hidden sm:table-cell">Ürünler</TableHead>
+                    <TableHead className="text-right">Toplam</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Kayıt bulunamadı.</TableCell></TableRow>
+                  ) : (
+                    orders.slice().reverse().map(order => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium text-sm">{format(new Date(order.date), "dd MMM HH:mm", { locale: tr })}</TableCell>
+                        <TableCell className="text-sm">{order.customerName}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="flex flex-col gap-0.5">
+                            {order.items.map(i => <span key={i.id} className="text-xs text-muted-foreground">{i.quantity}x {i.name}</span>)}
+                          </div>
                         </TableCell>
+                        <TableCell className="text-right font-bold text-accent text-sm">{order.total} TL</TableCell>
                       </TableRow>
-                    ) : (
-                      orders.slice().reverse().map(order => (
-                        <TableRow key={order.id}>
-                          <TableCell className="font-medium">
-                            {format(new Date(order.date), "dd MMM HH:mm", { locale: tr })}
-                          </TableCell>
-                          <TableCell>{order.customerName}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              {order.items.map(i => (
-                                <span key={i.id} className="text-xs text-muted-foreground">
-                                  {i.quantity}x {i.name}
-                                </span>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-accent">{order.total} TL</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </TabsContent>
         </Tabs>

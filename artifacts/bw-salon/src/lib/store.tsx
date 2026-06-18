@@ -68,9 +68,20 @@ export type SiteUser = {
   id: string;
   name: string;
   email: string;
-  password: string; // plain text demo storage
-  avatarColor: string; // hex color for avatar bg
+  password: string;
+  avatarColor: string;
   createdAt: string;
+};
+
+export type Review = {
+  id: string;
+  userId: string;
+  userName: string;
+  avatarColor: string;
+  rating: number;
+  text: string;
+  staffMember: string;
+  date: string;
 };
 
 export type StoreProduct = {
@@ -206,6 +217,15 @@ type StoreContextType = {
   isProfileModalOpen: boolean;
   setIsProfileModalOpen: (v: boolean) => void;
 
+  reviews: Review[];
+  addReview: (r: Omit<Review, "id" | "date">) => void;
+  deleteReview: (id: string) => void;
+
+  theme: "dark" | "light";
+  setTheme: (t: "dark" | "light") => void;
+  language: "tr" | "en";
+  setLanguage: (l: "tr" | "en") => void;
+
   siteContent: SiteContent;
   updateSiteContent: (updates: Partial<SiteContent>) => void;
   updateStoreProduct: (id: string, updates: Partial<StoreProduct>) => void;
@@ -238,13 +258,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<SiteUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [theme, setThemeState] = useState<"dark" | "light">(() => {
+    return (localStorage.getItem("bw_theme") as "dark" | "light") ?? "dark";
+  });
+  const [language, setLanguageState] = useState<"tr" | "en">(() => {
+    return (localStorage.getItem("bw_language") as "tr" | "en") ?? "tr";
+  });
+
+  const setTheme = (t: "dark" | "light") => {
+    setThemeState(t);
+    localStorage.setItem("bw_theme", t);
+    if (t === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
+
+  const setLanguage = (l: "tr" | "en") => {
+    setLanguageState(l);
+    localStorage.setItem("bw_language", l);
+    document.documentElement.lang = l;
+  };
 
   const [siteContent, setSiteContent] = useState<SiteContent>(DEFAULT_SITE_CONTENT);
 
   useEffect(() => {
     try {
-      const keys = ["bw_appointments","bw_messages","bw_cart","bw_orders","bw_adisyonlar","bw_transactions","bw_inventory","bw_stock_movements","bw_users","bw_site_content"];
-      const [a,m,c,o,ad,tr,inv,sm,usr,sc] = keys.map(k => localStorage.getItem(k));
+      const keys = ["bw_appointments","bw_messages","bw_cart","bw_orders","bw_adisyonlar","bw_transactions","bw_inventory","bw_stock_movements","bw_users","bw_site_content","bw_reviews"];
+      const [a,m,c,o,ad,tr,inv,sm,usr,sc,rv] = keys.map(k => localStorage.getItem(k));
       if (a) setAppointments(JSON.parse(a));
       if (m) setMessages(JSON.parse(m));
       if (c) setCart(JSON.parse(c));
@@ -255,6 +298,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (sm) setStockMovements(JSON.parse(sm));
       if (usr) setUsers(JSON.parse(usr));
       if (sc) setSiteContent({ ...DEFAULT_SITE_CONTENT, ...JSON.parse(sc) });
+      if (rv) setReviews(JSON.parse(rv));
+      // Apply saved theme
+      const savedTheme = localStorage.getItem("bw_theme") as "dark" | "light" | null;
+      if (savedTheme === "light") {
+        document.documentElement.classList.remove("dark");
+      } else {
+        document.documentElement.classList.add("dark");
+      }
+      const savedLang = localStorage.getItem("bw_language");
+      if (savedLang) document.documentElement.lang = savedLang;
 
       const currId = sessionStorage.getItem("bw_current_user_id");
       if (currId) {
@@ -278,13 +331,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("bw_stock_movements", JSON.stringify(stockMovements));
     localStorage.setItem("bw_users", JSON.stringify(users));
     localStorage.setItem("bw_site_content", JSON.stringify(siteContent));
+    localStorage.setItem("bw_reviews", JSON.stringify(reviews));
 
     if (currentUser) {
       sessionStorage.setItem("bw_current_user_id", currentUser.id);
     } else {
       sessionStorage.removeItem("bw_current_user_id");
     }
-  }, [appointments, messages, cart, orders, adisyonlar, transactions, inventory, stockMovements, users, currentUser, siteContent, isLoaded]);
+  }, [appointments, messages, cart, orders, adisyonlar, transactions, inventory, stockMovements, users, currentUser, siteContent, reviews, isLoaded]);
 
   const addAppointment = (app: Omit<Appointment, "id">) =>
     setAppointments(prev => [...prev, { ...app, id: uid() }]);
@@ -409,6 +463,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateStaffMember = (id: string, updates: Partial<StaffMember>) => setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.map(s => s.id === id ? { ...s, ...updates } : s) }));
   const deleteStaffMember = (id: string) => setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.filter(s => s.id !== id) }));
 
+  const addReview = (r: Omit<Review, "id" | "date">) =>
+    setReviews(prev => [...prev, { ...r, id: uid(), date: new Date().toISOString() }]);
+  const deleteReview = (id: string) => setReviews(prev => prev.filter(r => r.id !== id));
+
   return (
     <StoreContext.Provider value={{
       appointments, addAppointment,
@@ -420,6 +478,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       inventory, addInventoryProduct, updateInventoryProduct, deleteInventoryProduct,
       stockMovements, addStockMovement,
       users, currentUser, registerUser, loginUser, logoutUser, updateUser, isAuthModalOpen, setIsAuthModalOpen, isProfileModalOpen, setIsProfileModalOpen,
+      reviews, addReview, deleteReview,
+      theme, setTheme, language, setLanguage,
       siteContent, updateSiteContent, updateStoreProduct, addStoreProduct, deleteStoreProduct, addGalleryItem, deleteGalleryItem, addStaffMember, updateStaffMember, deleteStaffMember,
     }}>
       {children}
