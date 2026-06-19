@@ -44,11 +44,14 @@ router.get("/products", async (_req, res) => {
   }
 });
 
-// Create checkout session for a cart
+// Create checkout session for a cart (supports both price IDs and price_data)
 router.post("/checkout", async (req, res) => {
   try {
     const { lineItems, successUrl, cancelUrl } = req.body as {
-      lineItems: { price: string; quantity: number }[];
+      lineItems: Array<
+        | { price: string; quantity: number }
+        | { price_data: { currency: string; unit_amount: number; product_data: { name: string; images?: string[] } }; quantity: number }
+      >;
       successUrl: string;
       cancelUrl: string;
     };
@@ -62,7 +65,7 @@ router.post("/checkout", async (req, res) => {
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      line_items: lineItems,
+      line_items: lineItems as Parameters<typeof stripe.checkout.sessions.create>[0]["line_items"],
       mode: "payment",
       success_url: successUrl || `${req.protocol}://${req.get("host")}/?checkout=success`,
       cancel_url: cancelUrl || `${req.protocol}://${req.get("host")}/?checkout=cancel`,
