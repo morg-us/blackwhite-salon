@@ -155,7 +155,8 @@ export function AdminContent() {
 
   const handleGallerySubmit = () => {
     if (!galleryForm.url) return;
-    addGalleryItem({ url: galleryForm.url, category: galleryForm.category, subcategory: galleryForm.subcategory || undefined, label: galleryForm.label });
+    const sub = galleryForm.subcategory === "_none" ? undefined : (galleryForm.subcategory || undefined);
+    addGalleryItem({ url: galleryForm.url, category: galleryForm.category, subcategory: sub, label: galleryForm.label });
     setGalleryForm({ url: "", category: "sac", subcategory: "", label: "" });
     toast({ title: "Başarılı", description: "Görsel eklendi." });
   };
@@ -416,7 +417,7 @@ export function AdminContent() {
                 <Select value={galleryForm.subcategory} onValueChange={v => setGalleryForm(f => ({ ...f, subcategory: v }))}>
                   <SelectTrigger><SelectValue placeholder="Alt kategori" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Belirtme</SelectItem>
+                    <SelectItem value="_none">Belirtme</SelectItem>
                     {SAC_SUBCATS.map(s => (
                       <SelectItem key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
                     ))}
