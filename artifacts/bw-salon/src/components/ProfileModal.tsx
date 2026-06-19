@@ -38,13 +38,13 @@ export function ProfileModal() {
     setIsProfileModalOpen(open);
   };
 
-  const handleProfileSave = () => {
+  const handleProfileSave = async () => {
     setProfileError("");
     if (!profileName.trim() || !profileEmail.trim()) {
       setProfileError("Ad ve e-posta boş bırakılamaz.");
       return;
     }
-    const ok = updateUser(currentUser.id, { name: profileName.trim(), email: profileEmail.trim() });
+    const ok = await updateUser(currentUser.id, { name: profileName.trim(), email: profileEmail.trim() });
     if (!ok) {
       setProfileError("Bu e-posta başka bir hesapta kullanılıyor.");
       return;
@@ -52,7 +52,7 @@ export function ProfileModal() {
     toast({ title: "Profil güncellendi", description: "Bilgileriniz başarıyla kaydedildi." });
   };
 
-  const handlePasswordSave = () => {
+  const handlePasswordSave = async () => {
     setPwError("");
     if (pwCurrent !== currentUser.password) {
       setPwError("Mevcut şifre hatalı.");
@@ -66,7 +66,7 @@ export function ProfileModal() {
       setPwError("Yeni şifreler eşleşmiyor.");
       return;
     }
-    updateUser(currentUser.id, { password: pwNext });
+    await updateUser(currentUser.id, { password: pwNext });
     setPwCurrent(""); setPwNext(""); setPwConfirm("");
     toast({ title: "Şifre güncellendi", description: "Yeni şifreniz kaydedildi." });
   };

@@ -29,9 +29,9 @@ export function StaffPanel() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = loginStaffUser(username, pin);
+    const user = await loginStaffUser(username, pin);
     if (user) {
       setError("");
     } else {

@@ -1,1 +1,2 @@
 - [BW Salon stack](bw-salon-stack.md) — key decisions: esbuild can't bundle @workspace libs, Stripe field is `secret` not `secret_key`, Clerk proxy dev-only skip, stripe-replit-sync runMigrations needs no schema param
+- [DB-backed salon store](salon-db-migration.md) — All salon data migrated from localStorage to PostgreSQL; store.tsx uses optimistic updates + fire-and-forget API calls; siteContent synced via useEffect watcher.

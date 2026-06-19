@@ -42,10 +42,10 @@ export function AppointmentForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    setTimeout(() => {
-      addAppointment({
+    try {
+      await addAppointment({
         name: values.name,
         phone: values.phone,
         category: values.category,
@@ -53,13 +53,14 @@ export function AppointmentForm() {
         date: values.date.toISOString(),
         time: values.time,
       });
+    } finally {
       setIsSubmitting(false);
-      form.reset({ name: currentUser?.name ?? "", phone: "", category: "", staff: "", time: "" });
-      toast({
-        title: "Randevu Alındı ✓",
-        description: "Randevunuz başarıyla oluşturuldu. Sizi bekliyoruz!",
-      });
-    }, 800);
+    }
+    form.reset({ name: currentUser?.name ?? "", phone: "", category: "", staff: "", time: "" });
+    toast({
+      title: "Randevu Alındı ✓",
+      description: "Randevunuz başarıyla oluşturuldu. Sizi bekliyoruz!",
+    });
   }
 
   return (

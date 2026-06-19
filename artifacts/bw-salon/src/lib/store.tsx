@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useRef } from "react";
 
 export type Appointment = { id: string; name: string; phone: string; category: string; staff: string; date: string; time: string; };
 export type Message = { id: string; name: string; email: string; message: string; };
@@ -245,7 +245,7 @@ const USER_COLORS = ["#b84d5b", "#bd8c74", "#e8a5b2", "#4caf7d", "#54352b"];
 
 type StoreContextType = {
   appointments: Appointment[];
-  addAppointment: (app: Omit<Appointment, "id">) => void;
+  addAppointment: (app: Omit<Appointment, "id">) => Promise<void>;
   messages: Message[];
   addMessage: (msg: Omit<Message, "id">) => void;
   cart: CartItem[];
@@ -270,23 +270,23 @@ type StoreContextType = {
   deleteInventoryProduct: (id: string) => void;
   stockMovements: StockMovement[];
   addStockMovement: (m: Omit<StockMovement, "id" | "date" | "stockAfter">) => void;
-  
+
   users: SiteUser[];
   currentUser: SiteUser | null;
-  registerUser: (name: string, email: string, password: string) => boolean;
-  loginUser: (email: string, password: string) => boolean;
+  registerUser: (name: string, email: string, password: string) => Promise<boolean>;
+  loginUser: (email: string, password: string) => Promise<boolean>;
   logoutUser: () => void;
-  updateUser: (id: string, updates: Partial<Omit<SiteUser, "id">>) => boolean;
+  updateUser: (id: string, updates: Partial<Omit<SiteUser, "id">>) => Promise<boolean>;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (isOpen: boolean) => void;
   isProfileModalOpen: boolean;
   setIsProfileModalOpen: (v: boolean) => void;
 
   staffUsers: StaffUser[];
-  addStaffUser: (s: Omit<StaffUser, "id" | "createdAt">) => boolean;
+  addStaffUser: (s: Omit<StaffUser, "id" | "createdAt">) => Promise<boolean>;
   updateStaffUser: (id: string, updates: Partial<Omit<StaffUser, "id">>) => void;
   deleteStaffUser: (id: string) => void;
-  loginStaffUser: (username: string, pin: string) => StaffUser | null;
+  loginStaffUser: (username: string, pin: string) => Promise<StaffUser | null>;
   currentStaffUser: StaffUser | null;
   setCurrentStaffUser: (u: StaffUser | null) => void;
 
@@ -320,7 +320,19 @@ type StoreContextType = {
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
-function uid() { return Math.random().toString(36).substring(2, 9); }
+function uid() { return Math.random().toString(36).substring(2, 9) + Date.now().toString(36); }
+
+async function api<T>(path: string, opts?: RequestInit): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...opts,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? `API error ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -354,11 +366,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setTheme = (t: "dark" | "light") => {
     setThemeState(t);
     localStorage.setItem("bw_theme", t);
-    if (t === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    if (t === "dark") document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
   };
 
   const setLanguage = (l: "tr" | "en") => {
@@ -368,89 +377,154 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const [siteContent, setSiteContent] = useState<SiteContent>(DEFAULT_SITE_CONTENT);
+  const siteContentLoaded = useRef(false);
+  const siteContentDirty = useRef(false);
 
+  // ── Load all data from API on mount ──────────────────────
   useEffect(() => {
-    try {
-      const keys = ["bw_appointments","bw_messages","bw_cart","bw_orders","bw_adisyonlar","bw_transactions","bw_inventory","bw_stock_movements","bw_users","bw_site_content","bw_reviews","bw_staff_users","bw_work_entries"];
-      const [a,m,c,o,ad,tr,inv,sm,usr,sc,rv,su,we] = keys.map(k => localStorage.getItem(k));
-      if (a) setAppointments(JSON.parse(a));
-      if (m) setMessages(JSON.parse(m));
-      if (c) setCart(JSON.parse(c));
-      if (o) setOrders(JSON.parse(o));
-      if (ad) setAdisyonlar(JSON.parse(ad));
-      if (tr) setTransactions(JSON.parse(tr));
-      if (inv) setInventory(JSON.parse(inv));
-      if (sm) setStockMovements(JSON.parse(sm));
-      if (usr) setUsers(JSON.parse(usr));
-      if (sc) {
-        const parsed = JSON.parse(sc);
-        setSiteContent({ ...DEFAULT_SITE_CONTENT, ...parsed, priceList: parsed.priceList ? { ...DEFAULT_PRICE_LIST, ...parsed.priceList } : DEFAULT_PRICE_LIST });
-      }
-      if (rv) setReviews(JSON.parse(rv));
-      if (su) setStaffUsers(JSON.parse(su));
-      if (we) setWorkEntries(JSON.parse(we));
+    async function loadAll() {
+      try {
+        const [content, apts, msgs, adis, txns, inv, sm, rvs, su, we, usr] = await Promise.all([
+          api<SiteContent | null>("/site-content").catch(() => null),
+          api<Record<string, unknown>[]>("/appointments").catch(() => []),
+          api<Record<string, unknown>[]>("/contact-messages").catch(() => []),
+          api<Adisyon[]>("/adisyonlar").catch(() => []),
+          api<Transaction[]>("/transactions").catch(() => []),
+          api<InventoryProduct[]>("/inventory").catch(() => []),
+          api<StockMovement[]>("/stock-movements").catch(() => []),
+          api<Record<string, unknown>[]>("/reviews").catch(() => []),
+          api<StaffUser[]>("/staff-users").catch(() => []),
+          api<WorkEntry[]>("/work-entries").catch(() => []),
+          api<SiteUser[]>("/site-users").catch(() => []),
+        ]);
 
-      const savedTheme = localStorage.getItem("bw_theme") as "dark" | "light" | null;
-      if (savedTheme === "light") {
-        document.documentElement.classList.remove("dark");
-      } else {
-        document.documentElement.classList.add("dark");
-      }
-      const savedLang = localStorage.getItem("bw_language");
-      if (savedLang) document.documentElement.lang = savedLang;
+        if (content) {
+          setSiteContent({
+            ...DEFAULT_SITE_CONTENT,
+            ...content,
+            priceList: (content as SiteContent).priceList
+              ? { ...DEFAULT_PRICE_LIST, ...(content as SiteContent).priceList }
+              : DEFAULT_PRICE_LIST,
+          });
+        }
+        siteContentLoaded.current = true;
 
-      const currId = sessionStorage.getItem("bw_current_user_id");
-      if (currId) {
-        const uStr = usr ? JSON.parse(usr) : [];
-        const found = uStr.find((x: SiteUser) => x.id === currId);
-        if (found) setCurrentUser(found);
-      }
+        if (Array.isArray(apts)) {
+          setAppointments(apts.map(a => ({
+            id: String(a.id),
+            name: String(a.name),
+            phone: String(a.phone),
+            category: String(a.category),
+            staff: String(a.staff),
+            date: String(a.date),
+            time: String(a.time),
+          })));
+        }
+        if (Array.isArray(msgs)) {
+          setMessages(msgs.map(m => ({
+            id: String(m.id),
+            name: String(m.name),
+            email: String(m.email),
+            message: String(m.message),
+          })));
+        }
+        if (Array.isArray(adis)) setAdisyonlar(adis as Adisyon[]);
+        if (Array.isArray(txns)) setTransactions(txns as Transaction[]);
+        if (Array.isArray(inv)) setInventory(inv as InventoryProduct[]);
+        if (Array.isArray(sm)) setStockMovements(sm as StockMovement[]);
+        if (Array.isArray(rvs)) {
+          setReviews(rvs.map(r => ({
+            id: String(r.id),
+            userId: String(r.userId ?? ""),
+            userName: String(r.userName ?? ""),
+            avatarColor: String(r.avatarColor ?? "#b84d5b"),
+            rating: Number(r.rating ?? 5),
+            text: String(r.text ?? ""),
+            staffMember: String(r.staffMember ?? "Genel"),
+            date: String(r.createdAt ?? new Date().toISOString()),
+          })));
+        }
+        if (Array.isArray(su)) setStaffUsers(su as StaffUser[]);
+        if (Array.isArray(we)) setWorkEntries(we as WorkEntry[]);
+        if (Array.isArray(usr)) setUsers(usr as SiteUser[]);
 
-      const currStaffId = sessionStorage.getItem("bw_current_staff_id");
-      if (currStaffId && su) {
-        const suArr = JSON.parse(su) as StaffUser[];
-        const found = suArr.find(x => x.id === currStaffId);
-        if (found) setCurrentStaffUser(found);
+        // Restore sessions from sessionStorage
+        const savedTheme = localStorage.getItem("bw_theme") as "dark" | "light" | null;
+        if (savedTheme === "light") document.documentElement.classList.remove("dark");
+        else document.documentElement.classList.add("dark");
+        const savedLang = localStorage.getItem("bw_language");
+        if (savedLang) document.documentElement.lang = savedLang;
+
+        const currUserId = sessionStorage.getItem("bw_current_user_id");
+        if (currUserId && Array.isArray(usr)) {
+          const found = (usr as SiteUser[]).find(u => u.id === currUserId);
+          if (found) setCurrentUser(found);
+        }
+
+        const currStaffId = sessionStorage.getItem("bw_current_staff_id");
+        if (currStaffId && Array.isArray(su)) {
+          const found = (su as StaffUser[]).find(u => u.id === currStaffId);
+          if (found) setCurrentStaffUser(found);
+        }
+
+        // Restore cart from localStorage (device-specific)
+        try {
+          const savedCart = localStorage.getItem("bw_cart");
+          if (savedCart) setCart(JSON.parse(savedCart));
+        } catch { /* empty */ }
+      } catch (e) {
+        console.error("Failed to load data from API", e);
       }
-    } catch (e) { console.error("Error loading state", e); }
-    setIsLoaded(true);
+      setIsLoaded(true);
+    }
+    loadAll();
   }, []);
 
+  // ── Persist cart locally ──────────────────────────────────
   useEffect(() => {
     if (!isLoaded) return;
-    localStorage.setItem("bw_appointments", JSON.stringify(appointments));
-    localStorage.setItem("bw_messages", JSON.stringify(messages));
     localStorage.setItem("bw_cart", JSON.stringify(cart));
-    localStorage.setItem("bw_orders", JSON.stringify(orders));
-    localStorage.setItem("bw_adisyonlar", JSON.stringify(adisyonlar));
-    localStorage.setItem("bw_transactions", JSON.stringify(transactions));
-    localStorage.setItem("bw_inventory", JSON.stringify(inventory));
-    localStorage.setItem("bw_stock_movements", JSON.stringify(stockMovements));
-    localStorage.setItem("bw_users", JSON.stringify(users));
-    localStorage.setItem("bw_site_content", JSON.stringify(siteContent));
-    localStorage.setItem("bw_reviews", JSON.stringify(reviews));
-    localStorage.setItem("bw_staff_users", JSON.stringify(staffUsers));
-    localStorage.setItem("bw_work_entries", JSON.stringify(workEntries));
+  }, [cart, isLoaded]);
 
-    if (currentUser) {
-      sessionStorage.setItem("bw_current_user_id", currentUser.id);
-    } else {
-      sessionStorage.removeItem("bw_current_user_id");
-    }
+  // ── Persist session ───────────────────────────────────────
+  useEffect(() => {
+    if (currentUser) sessionStorage.setItem("bw_current_user_id", currentUser.id);
+    else sessionStorage.removeItem("bw_current_user_id");
+  }, [currentUser]);
 
-    if (currentStaffUser) {
-      sessionStorage.setItem("bw_current_staff_id", currentStaffUser.id);
-    } else {
-      sessionStorage.removeItem("bw_current_staff_id");
-    }
-  }, [appointments, messages, cart, orders, adisyonlar, transactions, inventory, stockMovements, users, currentUser, siteContent, reviews, staffUsers, currentStaffUser, workEntries, isLoaded]);
+  useEffect(() => {
+    if (currentStaffUser) sessionStorage.setItem("bw_current_staff_id", currentStaffUser.id);
+    else sessionStorage.removeItem("bw_current_staff_id");
+  }, [currentStaffUser]);
 
-  const addAppointment = (app: Omit<Appointment, "id">) =>
-    setAppointments(prev => [...prev, { ...app, id: uid() }]);
+  // ── Sync siteContent to API whenever it changes ───────────
+  useEffect(() => {
+    if (!siteContentLoaded.current) return;
+    if (!siteContentDirty.current) { siteContentDirty.current = true; return; }
+    api("/site-content", { method: "PUT", body: JSON.stringify(siteContent) }).catch(console.error);
+  }, [siteContent]);
 
-  const addMessage = (msg: Omit<Message, "id">) =>
-    setMessages(prev => [...prev, { ...msg, id: uid() }]);
+  // ── Appointments ──────────────────────────────────────────
+  const addAppointment = async (app: Omit<Appointment, "id">): Promise<void> => {
+    const created = await api<Appointment>("/appointments", {
+      method: "POST",
+      body: JSON.stringify(app),
+    });
+    setAppointments(prev => [...prev, { ...created, id: String(created.id) }]);
+  };
 
+  // ── Messages ──────────────────────────────────────────────
+  const addMessage = (msg: Omit<Message, "id">) => {
+    const tempId = uid();
+    setMessages(prev => [...prev, { ...msg, id: tempId }]);
+    api<Message>("/contact-messages", { method: "POST", body: JSON.stringify(msg) })
+      .then(created => {
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...created, id: String(created.id) } : m));
+      })
+      .catch(console.error);
+  };
+
+  // ── Cart ──────────────────────────────────────────────────
   const addToCart = (item: CartItem) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
@@ -459,28 +533,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
     setIsCartOpen(true);
   };
-
   const updateCartItem = (id: string, quantity: number) => {
     if (quantity <= 0) { removeFromCart(id); return; }
     setCart(prev => prev.map(i => i.id === id ? { ...i, quantity } : i));
   };
-
   const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.id !== id));
   const clearCart = () => setCart([]);
-
   const addOrder = (order: Omit<Order, "id" | "date">) =>
     setOrders(prev => [...prev, { ...order, id: uid(), date: new Date().toISOString() }]);
 
+  // ── Adisyonlar ────────────────────────────────────────────
   const addAdisyon = (a: Omit<Adisyon, "id" | "date">) => {
     const id = uid();
-    const date = new Date().toISOString();
-    setAdisyonlar(prev => [...prev, { ...a, id, date }]);
+    const newAdisyon: Adisyon = { ...a, id, date: new Date().toISOString() };
+    setAdisyonlar(prev => [...prev, newAdisyon]);
+    api("/adisyonlar", { method: "POST", body: JSON.stringify({ ...newAdisyon }) }).catch(console.error);
     if (a.status === "kapali") {
-      setTransactions(prev => [...prev, {
-        id: uid(), date, type: "gelir", category: "Adisyon",
-        description: `Adisyon #${id} — ${a.customerName}`,
-        amount: a.total, paymentMethod: a.paymentMethod,
-      }]);
+      const txn: Transaction = { id: uid(), date: newAdisyon.date, type: "gelir", category: "Adisyon", description: `Adisyon #${id} — ${a.customerName}`, amount: a.total, paymentMethod: a.paymentMethod };
+      setTransactions(prev => [...prev, txn]);
     }
   };
 
@@ -489,32 +559,49 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (a.id !== id) return a;
       const updated = { ...a, ...updates };
       if (updates.status === "kapali" && a.status !== "kapali") {
-        setTransactions(t => [...t, {
-          id: uid(), date: new Date().toISOString(), type: "gelir", category: "Adisyon",
-          description: `Adisyon #${id} kapatıldı — ${updated.customerName}`,
-          amount: updated.total, paymentMethod: updated.paymentMethod,
-        }]);
+        const txn: Transaction = { id: uid(), date: new Date().toISOString(), type: "gelir", category: "Adisyon", description: `Adisyon #${id} kapatıldı — ${updated.customerName}`, amount: updated.total, paymentMethod: updated.paymentMethod };
+        setTransactions(t => [...t, txn]);
+        api("/transactions", { method: "POST", body: JSON.stringify(txn) }).catch(console.error);
       }
       return updated;
     }));
+    api(`/adisyonlar/${id}`, { method: "PUT", body: JSON.stringify(updates) }).catch(console.error);
   };
 
-  const deleteAdisyon = (id: string) => setAdisyonlar(prev => prev.filter(a => a.id !== id));
+  const deleteAdisyon = (id: string) => {
+    setAdisyonlar(prev => prev.filter(a => a.id !== id));
+    api(`/adisyonlar/${id}`, { method: "DELETE" }).catch(console.error);
+  };
 
-  const addTransaction = (t: Omit<Transaction, "id" | "date">) =>
-    setTransactions(prev => [...prev, { ...t, id: uid(), date: new Date().toISOString() }]);
+  // ── Transactions ──────────────────────────────────────────
+  const addTransaction = (t: Omit<Transaction, "id" | "date">) => {
+    const txn: Transaction = { ...t, id: uid(), date: new Date().toISOString() };
+    setTransactions(prev => [...prev, txn]);
+    api("/transactions", { method: "POST", body: JSON.stringify(txn) }).catch(console.error);
+  };
 
-  const deleteTransaction = (id: string) => setTransactions(prev => prev.filter(t => t.id !== id));
+  const deleteTransaction = (id: string) => {
+    setTransactions(prev => prev.filter(t => t.id !== id));
+    api(`/transactions/${id}`, { method: "DELETE" }).catch(console.error);
+  };
 
-  const addInventoryProduct = (p: Omit<InventoryProduct, "id">) =>
-    setInventory(prev => [...prev, { ...p, id: uid() }]);
+  // ── Inventory ─────────────────────────────────────────────
+  const addInventoryProduct = (p: Omit<InventoryProduct, "id">) => {
+    const id = uid();
+    const product: InventoryProduct = { ...p, id };
+    setInventory(prev => [...prev, product]);
+    api("/inventory", { method: "POST", body: JSON.stringify(product) }).catch(console.error);
+  };
 
-  const updateInventoryProduct = (id: string, updates: Partial<InventoryProduct>) =>
+  const updateInventoryProduct = (id: string, updates: Partial<InventoryProduct>) => {
     setInventory(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    api(`/inventory/${id}`, { method: "PUT", body: JSON.stringify(updates) }).catch(console.error);
+  };
 
   const deleteInventoryProduct = (id: string) => {
     setInventory(prev => prev.filter(p => p.id !== id));
     setStockMovements(prev => prev.filter(m => m.productId !== id));
+    api(`/inventory/${id}`, { method: "DELETE" }).catch(console.error);
   };
 
   const addStockMovement = (m: Omit<StockMovement, "id" | "date" | "stockAfter">) => {
@@ -524,114 +611,174 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (m.type === "giris") newStock += m.quantity;
       else if (m.type === "cikis") newStock = Math.max(0, newStock - m.quantity);
       else newStock = m.quantity;
-      const stockAfter = newStock;
-      setStockMovements(sm => [...sm, { ...m, id: uid(), date: new Date().toISOString(), stockAfter }]);
+      const movement: StockMovement = { ...m, id: uid(), date: new Date().toISOString(), stockAfter: newStock };
+      setStockMovements(sm => [...sm, movement]);
+      api("/stock-movements", { method: "POST", body: JSON.stringify(movement) }).catch(console.error);
       return { ...p, stock: newStock };
     }));
   };
 
-  const registerUser = (name: string, email: string, password: string) => {
-    if (users.find(u => u.email === email)) return false;
+  // ── Site Users (custom auth) ──────────────────────────────
+  const registerUser = async (name: string, email: string, password: string): Promise<boolean> => {
     const color = USER_COLORS[users.length % USER_COLORS.length];
-    const newUser: SiteUser = { id: uid(), name, email, password, avatarColor: color, createdAt: new Date().toISOString() };
-    setUsers(prev => [...prev, newUser]);
-    setCurrentUser(newUser);
-    return true;
+    const id = uid();
+    try {
+      const created = await api<SiteUser>("/site-users/register", {
+        method: "POST",
+        body: JSON.stringify({ id, name, email, password, avatarColor: color }),
+      });
+      setUsers(prev => [...prev, created]);
+      setCurrentUser(created);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
-  const loginUser = (email: string, password: string) => {
-    const u = users.find(x => x.email === email && x.password === password);
-    if (!u) return false;
-    setCurrentUser(u);
-    return true;
+  const loginUser = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const user = await api<SiteUser>("/site-users/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      setUsers(prev => prev.find(u => u.id === user.id) ? prev : [...prev, user]);
+      setCurrentUser(user);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const logoutUser = () => setCurrentUser(null);
 
-  const updateUser = (id: string, updates: Partial<Omit<SiteUser, "id">>) => {
-    if (updates.email) {
-      const emailTaken = users.find(u => u.email === updates.email && u.id !== id);
-      if (emailTaken) return false;
+  const updateUser = async (id: string, updates: Partial<Omit<SiteUser, "id">>): Promise<boolean> => {
+    try {
+      const updated = await api<SiteUser>(`/site-users/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(updates),
+      });
+      setUsers(prev => prev.map(u => u.id === id ? updated : u));
+      setCurrentUser(prev => prev?.id === id ? updated : prev);
+      return true;
+    } catch {
+      return false;
     }
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
-    setCurrentUser(prev => prev && prev.id === id ? { ...prev, ...updates } : prev);
-    return true;
   };
 
-  const addStaffUser = (s: Omit<StaffUser, "id" | "createdAt">) => {
-    if (staffUsers.find(u => u.username === s.username)) return false;
-    setStaffUsers(prev => [...prev, { ...s, id: uid(), createdAt: new Date().toISOString() }]);
-    return true;
+  // ── Staff Users ───────────────────────────────────────────
+  const addStaffUser = async (s: Omit<StaffUser, "id" | "createdAt">): Promise<boolean> => {
+    try {
+      const created = await api<StaffUser>("/staff-users", {
+        method: "POST",
+        body: JSON.stringify({ ...s, id: uid() }),
+      });
+      setStaffUsers(prev => [...prev, created]);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const updateStaffUser = (id: string, updates: Partial<Omit<StaffUser, "id">>) => {
     setStaffUsers(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
-    setCurrentStaffUser(prev => prev && prev.id === id ? { ...prev, ...updates } : prev);
+    setCurrentStaffUser(prev => prev?.id === id ? { ...prev, ...updates } as StaffUser : prev);
+    api(`/staff-users/${id}`, { method: "PUT", body: JSON.stringify(updates) }).catch(console.error);
   };
 
   const deleteStaffUser = (id: string) => {
     setStaffUsers(prev => prev.filter(u => u.id !== id));
     if (currentStaffUser?.id === id) setCurrentStaffUser(null);
+    api(`/staff-users/${id}`, { method: "DELETE" }).catch(console.error);
   };
 
-  const loginStaffUser = (username: string, pin: string): StaffUser | null => {
-    const u = staffUsers.find(x => x.username === username && x.pin === pin);
-    if (!u) return null;
-    setCurrentStaffUser(u);
-    return u;
+  const loginStaffUser = async (username: string, pin: string): Promise<StaffUser | null> => {
+    try {
+      const user = await api<StaffUser>("/staff-users/login", {
+        method: "POST",
+        body: JSON.stringify({ username, pin }),
+      });
+      setCurrentStaffUser(user);
+      return user;
+    } catch {
+      return null;
+    }
   };
 
+  // ── Work Entries ──────────────────────────────────────────
   const addWorkEntry = (staffUserId: string, staffName: string) => {
-    setWorkEntries(prev => [...prev, { id: uid(), staffUserId, staffName, checkIn: new Date().toISOString() }]);
+    const entry: WorkEntry = { id: uid(), staffUserId, staffName, checkIn: new Date().toISOString() };
+    setWorkEntries(prev => [...prev, entry]);
+    api("/work-entries", { method: "POST", body: JSON.stringify(entry) }).catch(console.error);
   };
 
   const closeWorkEntry = (id: string) => {
-    setWorkEntries(prev => prev.map(e => e.id === id ? { ...e, checkOut: new Date().toISOString() } : e));
+    const checkOut = new Date().toISOString();
+    setWorkEntries(prev => prev.map(e => e.id === id ? { ...e, checkOut } : e));
+    api(`/work-entries/${id}/checkout`, { method: "PUT", body: JSON.stringify({ checkOut }) }).catch(console.error);
   };
 
-  const updateSiteContent = (updates: Partial<SiteContent>) => setSiteContent(prev => ({ ...prev, ...updates }));
-  const updateStoreProduct = (id: string, updates: Partial<StoreProduct>) => setSiteContent(prev => ({ ...prev, storeProducts: prev.storeProducts.map(p => p.id === id ? { ...p, ...updates } : p) }));
-  const addStoreProduct = (p: Omit<StoreProduct, "id">) => setSiteContent(prev => ({ ...prev, storeProducts: [...prev.storeProducts, { ...p, id: uid() }] }));
-  const deleteStoreProduct = (id: string) => setSiteContent(prev => ({ ...prev, storeProducts: prev.storeProducts.filter(p => p.id !== id) }));
-  const addGalleryItem = (item: Omit<GalleryItem, "id">) => setSiteContent(prev => ({ ...prev, galleryItems: [...prev.galleryItems, { ...item, id: uid() }] }));
-  const deleteGalleryItem = (id: string) => setSiteContent(prev => ({ ...prev, galleryItems: prev.galleryItems.filter(p => p.id !== id) }));
-  const addStaffMember = (s: Omit<StaffMember, "id">) => setSiteContent(prev => ({ ...prev, staffMembers: [...prev.staffMembers, { ...s, id: uid() }] }));
-  const updateStaffMember = (id: string, updates: Partial<StaffMember>) => setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.map(s => s.id === id ? { ...s, ...updates } : s) }));
-  const deleteStaffMember = (id: string) => setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.filter(s => s.id !== id) }));
+  // ── Reviews ───────────────────────────────────────────────
+  const addReview = (r: Omit<Review, "id" | "date">) => {
+    const tempId = uid();
+    const review: Review = { ...r, id: tempId, date: new Date().toISOString() };
+    setReviews(prev => [...prev, review]);
+    api<{ id: number; createdAt: string } & Review>("/reviews", {
+      method: "POST",
+      body: JSON.stringify({ ...r }),
+    }).then(created => {
+      setReviews(prev => prev.map(rv => rv.id === tempId ? { ...created, id: String(created.id), date: created.createdAt } : rv));
+    }).catch(console.error);
+  };
 
-  const updatePriceItem = (category: keyof PriceList, index: number, updates: Partial<PriceItem>) => {
+  const deleteReview = (id: string) => {
+    setReviews(prev => prev.filter(r => r.id !== id));
+  };
+
+  // ── Site Content mutations ────────────────────────────────
+  const updateSiteContent = (updates: Partial<SiteContent>) =>
+    setSiteContent(prev => ({ ...prev, ...updates }));
+
+  const updateStoreProduct = (id: string, updates: Partial<StoreProduct>) =>
+    setSiteContent(prev => ({ ...prev, storeProducts: prev.storeProducts.map(p => p.id === id ? { ...p, ...updates } : p) }));
+
+  const addStoreProduct = (p: Omit<StoreProduct, "id">) =>
+    setSiteContent(prev => ({ ...prev, storeProducts: [...prev.storeProducts, { ...p, id: uid() }] }));
+
+  const deleteStoreProduct = (id: string) =>
+    setSiteContent(prev => ({ ...prev, storeProducts: prev.storeProducts.filter(p => p.id !== id) }));
+
+  const addGalleryItem = (item: Omit<GalleryItem, "id">) =>
+    setSiteContent(prev => ({ ...prev, galleryItems: [...prev.galleryItems, { ...item, id: uid() }] }));
+
+  const deleteGalleryItem = (id: string) =>
+    setSiteContent(prev => ({ ...prev, galleryItems: prev.galleryItems.filter(p => p.id !== id) }));
+
+  const addStaffMember = (s: Omit<StaffMember, "id">) =>
+    setSiteContent(prev => ({ ...prev, staffMembers: [...prev.staffMembers, { ...s, id: uid() }] }));
+
+  const updateStaffMember = (id: string, updates: Partial<StaffMember>) =>
+    setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.map(s => s.id === id ? { ...s, ...updates } : s) }));
+
+  const deleteStaffMember = (id: string) =>
+    setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.filter(s => s.id !== id) }));
+
+  const updatePriceItem = (category: keyof PriceList, index: number, updates: Partial<PriceItem>) =>
     setSiteContent(prev => ({
       ...prev,
-      priceList: {
-        ...prev.priceList,
-        [category]: prev.priceList[category].map((item, i) => i === index ? { ...item, ...updates } : item),
-      },
+      priceList: { ...prev.priceList, [category]: prev.priceList[category].map((item, i) => i === index ? { ...item, ...updates } : item) },
     }));
-  };
 
-  const addPriceItem = (category: keyof PriceList, item: PriceItem) => {
+  const addPriceItem = (category: keyof PriceList, item: PriceItem) =>
     setSiteContent(prev => ({
       ...prev,
-      priceList: {
-        ...prev.priceList,
-        [category]: [...prev.priceList[category], item],
-      },
+      priceList: { ...prev.priceList, [category]: [...prev.priceList[category], item] },
     }));
-  };
 
-  const deletePriceItem = (category: keyof PriceList, index: number) => {
+  const deletePriceItem = (category: keyof PriceList, index: number) =>
     setSiteContent(prev => ({
       ...prev,
-      priceList: {
-        ...prev.priceList,
-        [category]: prev.priceList[category].filter((_, i) => i !== index),
-      },
+      priceList: { ...prev.priceList, [category]: prev.priceList[category].filter((_, i) => i !== index) },
     }));
-  };
-
-  const addReview = (r: Omit<Review, "id" | "date">) =>
-    setReviews(prev => [...prev, { ...r, id: uid(), date: new Date().toISOString() }]);
-  const deleteReview = (id: string) => setReviews(prev => prev.filter(r => r.id !== id));
 
   return (
     <StoreContext.Provider value={{

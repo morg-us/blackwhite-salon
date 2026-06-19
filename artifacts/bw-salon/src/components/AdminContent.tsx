@@ -149,7 +149,7 @@ export function AdminContent() {
   const [showStaffUserForm, setShowStaffUserForm] = useState(false);
   const [editingStaffUserId, setEditingStaffUserId] = useState<string | null>(null);
 
-  const handleStaffUserSubmit = () => {
+  const handleStaffUserSubmit = async () => {
     if (!staffUserForm.username || !staffUserForm.pin || !staffUserForm.staffMemberId) {
       toast({ title: "Hata", description: "Tüm alanları doldurun.", variant: "destructive" });
       return;
@@ -163,7 +163,7 @@ export function AdminContent() {
       toast({ title: "Başarılı", description: "Hesap güncellendi." });
     } else {
       const staffName = siteContent.staffMembers.find(s => s.id === staffUserForm.staffMemberId)?.name ?? staffUserForm.username;
-      const ok = addStaffUser({ ...staffUserForm, name: staffName });
+      const ok = await addStaffUser({ ...staffUserForm, name: staffName });
       if (!ok) {
         toast({ title: "Hata", description: "Bu kullanıcı adı zaten kullanılıyor.", variant: "destructive" });
         return;
