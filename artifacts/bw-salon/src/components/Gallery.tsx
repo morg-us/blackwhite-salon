@@ -128,22 +128,23 @@ export function Gallery() {
         {/* Lightbox */}
         {selectedImage && (
           <div
-            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+            className="fixed inset-0 z-50 flex items-center justify-center cursor-pointer"
+            style={{ backgroundColor: "rgba(0,0,0,0.92)" }}
             onClick={() => setSelectedImage(null)}
           >
-            <div className="relative flex items-center justify-center max-w-5xl w-full" onClick={e => e.stopPropagation()}>
-              <img
-                src={selectedImage}
-                alt="Selected"
-                className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-md shadow-2xl"
-              />
-              <button
-                className="absolute top-2 right-2 text-white bg-black/60 w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary transition-colors text-lg"
-                onClick={() => setSelectedImage(null)}
-              >
-                ✕
-              </button>
-            </div>
+            <img
+              src={selectedImage}
+              alt="Selected"
+              style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: "8px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)", display: "block" }}
+              onClick={e => e.stopPropagation()}
+            />
+            <button
+              className="absolute top-5 right-5 text-white bg-black/70 hover:bg-primary transition-colors rounded-full flex items-center justify-center text-lg font-bold"
+              style={{ width: 40, height: 40 }}
+              onClick={() => setSelectedImage(null)}
+            >
+              ✕
+            </button>
           </div>
         )}
       </div>
