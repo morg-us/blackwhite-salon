@@ -128,13 +128,17 @@ export function Gallery() {
         {/* Lightbox */}
         {selectedImage && (
           <div
-            className="fixed inset-0 z-50 bg-background/95 backdrop-blur flex items-center justify-center p-4 cursor-pointer"
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
             onClick={() => setSelectedImage(null)}
           >
-            <div className="relative max-w-5xl w-full max-h-[90vh]">
-              <img src={selectedImage} alt="Selected" className="w-full h-full object-contain rounded-md" />
+            <div className="relative flex items-center justify-center max-w-5xl w-full" onClick={e => e.stopPropagation()}>
+              <img
+                src={selectedImage}
+                alt="Selected"
+                className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-md shadow-2xl"
+              />
               <button
-                className="absolute top-4 right-4 text-white bg-black/50 w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary transition-colors"
+                className="absolute top-2 right-2 text-white bg-black/60 w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary transition-colors text-lg"
                 onClick={() => setSelectedImage(null)}
               >
                 ✕

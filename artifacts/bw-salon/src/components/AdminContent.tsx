@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useStore } from "@/lib/store";
 import type { StaffMember, ContactInfo, PriceList, StaffRole } from "@/lib/store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -78,6 +78,7 @@ const PRICE_CAT_LABELS: Record<keyof PriceList, string> = {
 
 export function AdminContent() {
   const {
+    isLoaded,
     siteContent,
     updateSiteContent,
     addStoreProduct, updateStoreProduct, deleteStoreProduct,
@@ -92,6 +93,15 @@ export function AdminContent() {
   const [logoUrl, setLogoUrl] = useState(siteContent.logoImageUrl);
   const heroUpload = useImageInput(setHeroUrl);
   const logoUpload = useImageInput(setLogoUrl);
+
+  // Sync form fields once after API data loads (prevents default values overwriting saved data)
+  useEffect(() => {
+    if (isLoaded) {
+      setHeroUrl(siteContent.heroImageUrl);
+      setLogoUrl(siteContent.logoImageUrl);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
 
   const saveHeroLogo = () => {
     updateSiteContent({ heroImageUrl: heroUrl, logoImageUrl: logoUrl });

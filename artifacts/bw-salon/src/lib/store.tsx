@@ -244,6 +244,7 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
 const USER_COLORS = ["#b84d5b", "#bd8c74", "#e8a5b2", "#4caf7d", "#54352b"];
 
 type StoreContextType = {
+  isLoaded: boolean;
   appointments: Appointment[];
   addAppointment: (app: Omit<Appointment, "id">) => Promise<void>;
   messages: Message[];
@@ -795,6 +796,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       workEntries, addWorkEntry, closeWorkEntry,
       reviews, addReview, deleteReview,
       theme, setTheme, language, setLanguage,
+      isLoaded,
       siteContent, updateSiteContent, updateStoreProduct, addStoreProduct, deleteStoreProduct, addGalleryItem, deleteGalleryItem, addStaffMember, updateStaffMember, deleteStaffMember,
       updatePriceItem, addPriceItem, deletePriceItem,
     }}>
