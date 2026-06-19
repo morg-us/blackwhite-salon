@@ -1,0 +1,21 @@
+Admin panelinde yapacağımız artık herşey müşteri panelinde direk gözüksün ve artık kayıtlı kalsın yani site artık çalışır duruma gelsin herşey kayıtta kalmaya ve kaldığı yerden devam etsin 
+
+Canlı destek için eklediğimiz bölüm yapay zeka ile entegrasyon edilsin ki mesaj yazıldığında anında karşı tarafa sorusuyla ya da iletişime gecilmesi gerekiyorsa karşı tepki verilsin eğer ki kişi iletişime geçmek istiyorsa iş yerinin numarasını yolladın geri kalanı yapay zekanın entegrasyonlanmasıyla benim nir işlem yapmama gerek kalmasın kısacası
+
+Kart işlemleri gerçekten bankalarla entegrasyon edilsin yani artık gerçek bir site durumuna gelsin ki insanlar güvenli bir şekilde kartlarını buraya koyabilsin ve para yatırma ve satın alım işlemlerini gerçekten yapabilsinler ve sorunsuz bir şekilde bu sistemi ayarla 
+
+Profil kısmında ki bölümde ayarlar bölümüne siteyi isterlerse dark mode da isterlerse parlak kodda kullanabilme sisteminide ekle birde dil ayarı ekle ki yabancılar da kullanabilsin
+
+Müşteri girişi için ayarladığımız hesap giriş kaydı artık bulut bir sistemde toplansın herkesin veri tabanını bilebilelim , kayıtlar depolansın ki başka birisi aynı e posta ile birden fazla hesap açamasın birde bu kısma sadece kayıtı elle doldurma ile değilde gmail ve facebook hesapları ile de entegre bir şekilde giriş sağlayabilsinler 
+
+Müşteri yorumları için bir bölüm ekledik ama orda sabit yorumlar kaldı orası için müşterilerin gerçekten bu siteye kendi fikirlerini yoeum yapabilecekleri bir yoeum ekle bölümü ekleyelim ve siteyi boğmadan bir şekilde olsun
+
+Entegrasyon edilemai gwreken gerleyi bul eksiksiz bir şekilde ayarla sitede hiç bir sorun kalmasın ve herşey sorunsuz bir şekilde çalışıp site artık hazır hale gelsin
+
+Admin paneli için eklediğin herşey çok tatlı çok güzel ama şu kısımda bir sorun oluyor o yüzden herşeyi entegre et diyorum uygulama içinde admin panelinden isimler değiştiriyorum ama müşteri panelinde ki randevu oluşturma bölümünde usman seçimi kısmında ki seçenekde önce ki isinler duruyor oysa ki ben admin panelinde uzman kadroda ki isimleri felan değiştirdim o yüzden onun içinde admin panelinde ayrı bir bölüm oluştur ki orda ki panelde ki bölümde ki seçenekleride düsenleyebilelim ve bir sorun çıkmadan herşeyi ayarlayabilmiş olalım
+
+Verilerin kaydedildiği bir bölümde ayarla admin paneline 
+
+Siteye kaydolma , giriş sayısı , veri tabanı vb. Bunları görebileceğimiz bölümde oluştur 
+
+Artık bu site gerçekten eksiksiz çalışan bir makine olsun istiyorum
