@@ -1,17 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
-
-const SAC_SUBCATEGORIES = [
-  { value: "all", label: "Tümü" },
-  { value: "ombre", label: "Ombre" },
-  { value: "sombre", label: "Sombre" },
-  { value: "kesim", label: "Kesim" },
-  { value: "boyama", label: "Boyama" },
-  { value: "röfle", label: "Röfle" },
-  { value: "keratin", label: "Keratin" },
-  { value: "gelin", label: "Gelin" },
-];
+import { useT } from "@/lib/translations";
 
 export function Gallery() {
   const { siteContent } = useStore();
@@ -19,6 +9,18 @@ export function Gallery() {
   const [filter, setFilter] = useState("all");
   const [sacSubcat, setSacSubcat] = useState("all");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const t = useT();
+
+  const SAC_SUBCATEGORIES = [
+    { value: "all", label: t("gallery_sub_all") },
+    { value: "ombre", label: "Ombre" },
+    { value: "sombre", label: "Sombre" },
+    { value: "kesim", label: "Kesim" },
+    { value: "boyama", label: "Boyama" },
+    { value: "röfle", label: "Röfle" },
+    { value: "keratin", label: "Keratin" },
+    { value: "gelin", label: "Gelin" },
+  ];
 
   const filtered = (() => {
     if (filter === "all") return images;
@@ -34,15 +36,15 @@ export function Gallery() {
     <section id="gallery" className="py-24 bg-card/30">
       <div className="container px-4 mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif">Koleksiyon</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif">{t("gallery_title")}</h2>
           <div className="h-1 w-20 bg-primary mx-auto mb-8"></div>
 
           {/* Main category filter */}
           <div className="flex justify-center gap-3 mb-4 flex-wrap">
             {[
-              { value: "all", label: "Tümü" },
-              { value: "sac", label: "Saç Modelleri" },
-              { value: "tirnak", label: "Tırnak Modelleri" },
+              { value: "all", label: t("gallery_all") },
+              { value: "sac", label: t("gallery_hair") },
+              { value: "tirnak", label: t("gallery_nail") },
             ].map(f => (
               <button
                 key={f.value}
@@ -120,7 +122,7 @@ export function Gallery() {
           </AnimatePresence>
           {filtered.length === 0 && (
             <div className="col-span-4 text-center py-12 text-muted-foreground">
-              Bu kategoride henüz fotoğraf bulunmamaktadır.
+              {t("gallery_empty")}
             </div>
           )}
         </motion.div>

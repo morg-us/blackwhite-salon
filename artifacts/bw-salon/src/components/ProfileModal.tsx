@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { User, Lock, ShoppingBag, Settings, LogOut, Sun, Moon, Globe } from "lucide-react";
+import { User, Lock, ShoppingBag } from "lucide-react";
 
 export function ProfileModal() {
-  const { isProfileModalOpen, setIsProfileModalOpen, currentUser, updateUser, orders, logoutUser, theme, setTheme, language, setLanguage } = useStore();
+  const { isProfileModalOpen, setIsProfileModalOpen, currentUser, updateUser, orders, logoutUser } = useStore();
   const { toast } = useToast();
 
   const [profileName, setProfileName] = useState(currentUser?.name ?? "");
@@ -25,7 +25,6 @@ export function ProfileModal() {
   if (!currentUser) return null;
 
   const userOrders = orders.filter(o => o.userId === currentUser.id || o.userEmail === currentUser.email);
-
   const initials = currentUser.name.split(" ").map(w => w[0] ?? "").join("").toUpperCase().slice(0, 2);
 
   const handleOpen = (open: boolean) => {
@@ -97,7 +96,7 @@ export function ProfileModal() {
 
         <Tabs defaultValue="profile" className="flex-1 flex flex-col overflow-hidden">
           {/* Tab bar */}
-          <TabsList className="grid grid-cols-4 w-full rounded-none bg-transparent border-b border-border h-auto shrink-0 p-0 gap-0">
+          <TabsList className="grid grid-cols-3 w-full rounded-none bg-transparent border-b border-border h-auto shrink-0 p-0 gap-0">
             <TabsTrigger
               value="profile"
               className="flex flex-col items-center gap-1 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent bg-transparent text-xs font-medium"
@@ -118,13 +117,6 @@ export function ProfileModal() {
             >
               <ShoppingBag className="w-4 h-4" />
               <span>Siparişler</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="settings"
-              className="flex flex-col items-center gap-1 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent bg-transparent text-xs font-medium"
-            >
-              <Settings className="w-4 h-4" />
-              <span>Ayarlar</span>
             </TabsTrigger>
           </TabsList>
 
@@ -234,82 +226,6 @@ export function ProfileModal() {
                   ))}
                 </div>
               )}
-            </TabsContent>
-
-            {/* ── AYARLAR ── */}
-            <TabsContent value="settings" className="p-5 space-y-5 mt-0">
-
-              {/* Theme */}
-              <div>
-                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                  {theme === "dark" ? <Moon className="w-4 h-4 text-primary" /> : <Sun className="w-4 h-4 text-yellow-400" />}
-                  Görünüm
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setTheme("dark")}
-                    className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${theme === "dark" ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"}`}
-                  >
-                    <Moon className="w-4 h-4" /> Karanlık
-                  </button>
-                  <button
-                    onClick={() => setTheme("light")}
-                    className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${theme === "light" ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"}`}
-                  >
-                    <Sun className="w-4 h-4" /> Aydınlık
-                  </button>
-                </div>
-              </div>
-
-              {/* Language */}
-              <div>
-                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-primary" /> Dil / Language
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setLanguage("tr")}
-                    className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${language === "tr" ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"}`}
-                  >
-                    🇹🇷 Türkçe
-                  </button>
-                  <button
-                    onClick={() => setLanguage("en")}
-                    className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all ${language === "en" ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"}`}
-                  >
-                    🇬🇧 English
-                  </button>
-                </div>
-              </div>
-
-              {/* Notifications */}
-              <div>
-                <h4 className="font-medium text-sm mb-3">Bildirim Tercihleri</h4>
-                <div className="space-y-2">
-                  {["Randevu hatırlatmaları", "Sipariş güncellemeleri", "Kampanya ve fırsatlar"].map(label => (
-                    <label key={label} className="flex items-center justify-between p-3 border border-border rounded-xl cursor-pointer hover:bg-muted/30 transition-colors">
-                      <span className="text-sm">{label}</span>
-                      <span className="relative inline-flex">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
-                        <span className="w-10 h-6 bg-muted rounded-full peer-checked:bg-[#b84d5b] transition-colors block" />
-                        <span className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4 block" />
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-border">
-                <h4 className="font-medium text-sm mb-3">Hesap</h4>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-2 text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
-                  onClick={() => { logoutUser(); setIsProfileModalOpen(false); }}
-                >
-                  <LogOut className="w-4 h-4" />
-                  Çıkış Yap
-                </Button>
-              </div>
             </TabsContent>
 
           </div>

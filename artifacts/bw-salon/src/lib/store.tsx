@@ -301,8 +301,8 @@ type StoreContextType = {
 
   theme: "dark" | "light";
   setTheme: (t: "dark" | "light") => void;
-  language: "tr" | "en";
-  setLanguage: (l: "tr" | "en") => void;
+  language: "tr" | "en" | "ru";
+  setLanguage: (l: "tr" | "en" | "ru") => void;
 
   siteContent: SiteContent;
   updateSiteContent: (updates: Partial<SiteContent>) => void;
@@ -360,8 +360,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<"dark" | "light">(() => {
     return (localStorage.getItem("bw_theme") as "dark" | "light") ?? "dark";
   });
-  const [language, setLanguageState] = useState<"tr" | "en">(() => {
-    return (localStorage.getItem("bw_language") as "tr" | "en") ?? "tr";
+  const [language, setLanguageState] = useState<"tr" | "en" | "ru">(() => {
+    return (localStorage.getItem("bw_language") as "tr" | "en" | "ru") ?? "tr";
   });
 
   const setTheme = (t: "dark" | "light") => {
@@ -371,7 +371,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     else document.documentElement.classList.remove("dark");
   };
 
-  const setLanguage = (l: "tr" | "en") => {
+  const setLanguage = (l: "tr" | "en" | "ru") => {
     setLanguageState(l);
     localStorage.setItem("bw_language", l);
     document.documentElement.lang = l;

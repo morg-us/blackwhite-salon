@@ -1,4 +1,4 @@
-import { ShoppingBag, Menu, X, User, LogOut, Package, Settings } from "lucide-react";
+import { ShoppingBag, Menu, X, User, LogOut, Package, Moon, Sun, Globe } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
@@ -6,26 +6,31 @@ import { AuthModal } from "@/components/AuthModal";
 import { ProfileModal } from "@/components/ProfileModal";
 import { UserOrdersModal } from "@/components/UserOrdersModal";
 import { useUser, useClerk } from "@clerk/react";
+import { useT, LANGUAGES } from "@/lib/translations";
 
 export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLangOpen, setIsLangOpen] = useState(false);
   const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
 
-  const { cart, setIsCartOpen, setIsAuthModalOpen, setIsProfileModalOpen, siteContent } = useStore();
+  const { cart, setIsCartOpen, setIsAuthModalOpen, setIsProfileModalOpen, siteContent, theme, setTheme, language, setLanguage } = useStore();
   const { user, isSignedIn } = useUser();
   const { signOut } = useClerk();
+  const t = useT();
 
   const cartItemsCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-
   const displayName = user?.fullName ?? user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
   const displayEmail = user?.emailAddresses?.[0]?.emailAddress ?? "";
   const avatarUrl = user?.imageUrl;
   const initials = displayName
     ? displayName.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)
     : "?";
+
+  const currentLang = LANGUAGES.find(l => l.code === language) ?? LANGUAGES[0];
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -35,21 +40,20 @@ export function Navigation() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setIsUserMenuOpen(false);
-      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setIsUserMenuOpen(false);
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) setIsLangOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const navLinks = [
-    { name: "Anasayfa", href: "#hero" },
-    { name: "Hakkımızda", href: "#staff" },
-    { name: "Fiyat Listesi", href: "#pricing" },
-    { name: "Koleksiyon", href: "#gallery" },
-    { name: "Mağaza", href: "#store" },
-    { name: "İletişim", href: "#contact" },
+    { name: t("nav_home"), href: "#hero" },
+    { name: t("nav_about"), href: "#staff" },
+    { name: t("nav_pricing"), href: "#pricing" },
+    { name: t("nav_gallery"), href: "#gallery" },
+    { name: t("nav_store"), href: "#store" },
+    { name: t("nav_contact"), href: "#contact" },
   ];
 
   const scrollTo = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -64,6 +68,8 @@ export function Navigation() {
     setIsMobileMenuOpen(false);
     await signOut();
   };
+
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   return (
     <>
@@ -84,11 +90,11 @@ export function Navigation() {
           </div>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-6 lg:gap-8">
+          <div className="hidden md:flex items-center gap-4 lg:gap-6">
             <div className="flex gap-4 lg:gap-6">
               {navLinks.map(link => (
                 <a
-                  key={link.name}
+                  key={link.href}
                   href={link.href}
                   onClick={e => scrollTo(e, link.href)}
                   className={`text-sm font-medium hover:text-primary transition-colors ${isScrolled ? "text-foreground/80" : "text-white/90"}`}
@@ -96,6 +102,40 @@ export function Navigation() {
                   {link.name}
                 </a>
               ))}
+            </div>
+
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              title={theme === "dark" ? t("theme_light") : t("theme_dark")}
+              className={`p-2 rounded-full hover:bg-white/10 transition-colors ${isScrolled ? "text-foreground/70 hover:bg-muted" : "text-white/80"}`}
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            {/* Language selector */}
+            <div className="relative" ref={langMenuRef}>
+              <button
+                onClick={() => setIsLangOpen(v => !v)}
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-semibold transition-colors hover:bg-white/10 ${isScrolled ? "text-foreground/70 hover:bg-muted" : "text-white/80"}`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>{currentLang.flag} {currentLang.code.toUpperCase()}</span>
+              </button>
+              {isLangOpen && (
+                <div className="absolute right-0 top-9 w-36 bg-card border border-border rounded-xl shadow-xl py-1 z-50">
+                  {LANGUAGES.map(lang => (
+                    <button
+                      key={lang.code}
+                      onClick={() => { setLanguage(lang.code); setIsLangOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 transition-colors text-left ${language === lang.code ? "text-primary font-semibold" : "text-foreground"}`}
+                    >
+                      <span>{lang.flag}</span>
+                      <span>{lang.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Cart */}
@@ -137,26 +177,20 @@ export function Navigation() {
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left"
                       onClick={() => { setIsUserMenuOpen(false); setIsProfileModalOpen(true); }}
                     >
-                      <User className="w-4 h-4 text-primary" /> Profilim
+                      <User className="w-4 h-4 text-primary" /> {t("nav_profile")}
                     </button>
                     <button
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left"
                       onClick={() => { setIsUserMenuOpen(false); setIsOrdersModalOpen(true); }}
                     >
-                      <Package className="w-4 h-4 text-primary" /> Siparişlerim
-                    </button>
-                    <button
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left"
-                      onClick={() => { setIsUserMenuOpen(false); setIsProfileModalOpen(true); }}
-                    >
-                      <Settings className="w-4 h-4 text-primary" /> Ayarlar
+                      <Package className="w-4 h-4 text-primary" /> {t("nav_orders")}
                     </button>
                     <div className="border-t border-border mt-1 pt-1">
                       <button
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
                         onClick={handleLogout}
                       >
-                        <LogOut className="w-4 h-4" /> Çıkış Yap
+                        <LogOut className="w-4 h-4" /> {t("nav_logout")}
                       </button>
                     </div>
                   </div>
@@ -169,13 +203,21 @@ export function Navigation() {
                 className={`hover:bg-primary/20 hover:text-primary ${isScrolled ? "text-foreground" : "text-white"}`}
                 onClick={() => setIsAuthModalOpen(true)}
               >
-                Giriş Yap
+                {t("nav_login")}
               </Button>
             )}
           </div>
 
           {/* Mobile Right Side */}
-          <div className="flex md:hidden items-center gap-2">
+          <div className="flex md:hidden items-center gap-1">
+            {/* Theme toggle mobile */}
+            <button
+              onClick={toggleTheme}
+              className={`p-2 ${isScrolled ? "text-foreground/70" : "text-white/80"}`}
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
             <button
               className={`relative p-2 ${isScrolled ? "text-foreground" : "text-white"}`}
               onClick={() => setIsCartOpen(true)}
@@ -204,7 +246,7 @@ export function Navigation() {
               <button
                 className={`p-1.5 ${isScrolled ? "text-foreground" : "text-white"}`}
                 onClick={() => setIsAuthModalOpen(true)}
-                aria-label="Giriş Yap"
+                aria-label={t("nav_login")}
               >
                 <User className="w-5 h-5" />
               </button>
@@ -226,13 +268,26 @@ export function Navigation() {
             <div className="px-4 py-2">
               {navLinks.map(link => (
                 <a
-                  key={link.name}
+                  key={link.href}
                   href={link.href}
                   onClick={e => scrollTo(e, link.href)}
                   className="flex items-center py-3 text-base font-medium text-foreground border-b border-border/50 last:border-0 hover:text-primary transition-colors"
                 >
                   {link.name}
                 </a>
+              ))}
+            </div>
+
+            {/* Mobile language + theme */}
+            <div className="px-4 py-3 border-t border-border/50 flex items-center gap-2">
+              {LANGUAGES.map(lang => (
+                <button
+                  key={lang.code}
+                  onClick={() => { setLanguage(lang.code); }}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${language === lang.code ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
+                >
+                  {lang.flag} {lang.code.toUpperCase()}
+                </button>
               ))}
             </div>
 
@@ -250,19 +305,15 @@ export function Navigation() {
                   </div>
                   <button className="w-full flex items-center gap-3 py-2.5 text-sm text-foreground hover:text-primary transition-colors"
                     onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}>
-                    <User className="w-4 h-4 text-primary" /> Profilim
+                    <User className="w-4 h-4 text-primary" /> {t("nav_profile")}
                   </button>
                   <button className="w-full flex items-center gap-3 py-2.5 text-sm text-foreground hover:text-primary transition-colors"
                     onClick={() => { setIsMobileMenuOpen(false); setIsOrdersModalOpen(true); }}>
-                    <Package className="w-4 h-4 text-primary" /> Siparişlerim
-                  </button>
-                  <button className="w-full flex items-center gap-3 py-2.5 text-sm text-foreground hover:text-primary transition-colors"
-                    onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}>
-                    <Settings className="w-4 h-4 text-primary" /> Ayarlar
+                    <Package className="w-4 h-4 text-primary" /> {t("nav_orders")}
                   </button>
                   <button className="w-full flex items-center gap-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors mt-1"
                     onClick={handleLogout}>
-                    <LogOut className="w-4 h-4" /> Çıkış Yap
+                    <LogOut className="w-4 h-4" /> {t("nav_logout")}
                   </button>
                 </>
               ) : (
@@ -270,7 +321,7 @@ export function Navigation() {
                   className="w-full bg-[#b84d5b] hover:bg-[#b84d5b]/90 text-white"
                   onClick={() => { setIsMobileMenuOpen(false); setIsAuthModalOpen(true); }}
                 >
-                  Giriş Yap / Kayıt Ol
+                  {t("nav_login_register")}
                 </Button>
               )}
             </div>
