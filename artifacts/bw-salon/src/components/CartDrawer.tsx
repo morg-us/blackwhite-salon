@@ -1,66 +1,25 @@
-import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
-import { useToast } from "@/hooks/use-toast";
-import { Minus, Plus, Trash2, CreditCard, ExternalLink } from "lucide-react";
-import { useUser } from "@clerk/react";
-
-const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+import { Minus, Plus, Trash2, MessageCircle } from "lucide-react";
 
 export function CartDrawer() {
-  const { isCartOpen, setIsCartOpen, cart, updateCartItem, removeFromCart, setIsAuthModalOpen } = useStore();
-  const { toast } = useToast();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const { isSignedIn } = useUser();
+  const { isCartOpen, setIsCartOpen, cart, updateCartItem, removeFromCart, siteContent } = useStore();
 
   const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-  const handleStripeCheckout = async () => {
+  const handleWhatsAppOrder = () => {
     if (cart.length === 0) return;
-    setIsProcessing(true);
 
-    try {
-      // Build line items — each cart item needs a Stripe price ID.
-      // Since we use localStorage cart with TL prices (not Stripe price IDs),
-      // we create a dynamic checkout session using price_data.
-      const lineItems = cart.map(item => ({
-        price_data: {
-          currency: "try",
-          unit_amount: Math.round(item.price * 100), // TL → kuruş
-          product_data: {
-            name: item.name,
-            images: item.image?.startsWith("http") ? [item.image] : [],
-          },
-        },
-        quantity: item.quantity,
-      }));
+    const lines = cart.map(item => `• ${item.name} x${item.quantity} — ${item.price * item.quantity} TL`).join("\n");
+    const message = `Merhaba, aşağıdaki ürünleri sipariş etmek istiyorum:\n\n${lines}\n\nToplam: ${total} TL`;
 
-      const origin = window.location.origin;
-      const res = await fetch(`${BASE}/api/stripe/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lineItems,
-          successUrl: `${origin}/?checkout=success`,
-          cancelUrl: `${origin}/?checkout=cancel`,
-        }),
-      });
+    const phone = (siteContent.contactInfo.whatsappNumber || "").replace(/\D/g, "");
+    const url = phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Bilinmeyen hata" }));
-        throw new Error(err.error ?? "Checkout başlatılamadı");
-      }
-
-      const { url } = await res.json();
-      if (url) {
-        window.location.href = url;
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Ödeme başlatılamadı";
-      toast({ title: "Hata", description: msg, variant: "destructive" });
-      setIsProcessing(false);
-    }
+    window.open(url, "_blank");
   };
 
   return (
@@ -106,34 +65,18 @@ export function CartDrawer() {
             <span className="text-accent">{total} TL</span>
           </div>
 
-          {!isSignedIn && cart.length > 0 && (
-            <p className="text-xs text-muted-foreground text-center">
-              <button className="text-primary hover:underline" onClick={() => { setIsCartOpen(false); setIsAuthModalOpen(true); }}>
-                Giriş yapın
-              </button>{" "}
-              veya misafir olarak devam edin.
-            </p>
-          )}
-
           <Button
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="w-full bg-green-600 hover:bg-green-700 text-white"
             size="lg"
-            disabled={cart.length === 0 || isProcessing}
-            onClick={handleStripeCheckout}
+            disabled={cart.length === 0}
+            onClick={handleWhatsAppOrder}
             data-testid="button-proceed-checkout"
           >
-            {isProcessing ? (
-              "Yönlendiriliyor..."
-            ) : (
-              <>
-                <CreditCard className="w-4 h-4 mr-2" />
-                Stripe ile Güvenli Öde
-                <ExternalLink className="w-3 h-3 ml-2 opacity-60" />
-              </>
-            )}
+            <MessageCircle className="w-4 h-4 mr-2" />
+            WhatsApp ile Sipariş Ver
           </Button>
           <p className="text-[10px] text-muted-foreground text-center">
-            256-bit SSL şifrelemeli güvenli ödeme
+            Sepetinizdeki ürünler WhatsApp mesajı olarak gönderilecektir.
           </p>
         </SheetFooter>
       </SheetContent>
