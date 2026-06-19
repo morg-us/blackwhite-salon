@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useStore } from "@/lib/store";
-import type { StaffMember, ContactInfo } from "@/lib/store";
+import type { StaffMember, ContactInfo, PriceList, StaffRole } from "@/lib/store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Mail, Instagram, MessageCircle, Clock, Facebook } from "lucide-react";
+import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Instagram, MessageCircle, Clock, Facebook, KeyRound, UserPlus, ShieldCheck } from "lucide-react";
 
 function useImageInput(onResult: (dataUrl: string) => void) {
   const ref = useRef<HTMLInputElement>(null);
@@ -71,6 +71,11 @@ function ImageInputField({
 const EMPTY_PRODUCT = { id: "", name: "", description: "", price: "", imageUrl: "" };
 const EMPTY_STAFF: Omit<StaffMember, "id"> = { name: "", title: "", experience: "", rating: 5.0, initials: "", tags: [], imageUrl: "" };
 
+const SAC_SUBCATS = ["ombre", "sombre", "kesim", "boyama", "röfle", "keratin", "gelin"];
+const PRICE_CAT_LABELS: Record<keyof PriceList, string> = {
+  sac: "Saç Hizmetleri", makyaj: "Makyaj", gelin: "Gelin & Özel", manikur: "Manikür & Pedikür", agda: "Ağda",
+};
+
 export function AdminContent() {
   const {
     siteContent,
@@ -78,6 +83,8 @@ export function AdminContent() {
     addStoreProduct, updateStoreProduct, deleteStoreProduct,
     addGalleryItem, deleteGalleryItem,
     addStaffMember, updateStaffMember, deleteStaffMember,
+    updatePriceItem, addPriceItem, deletePriceItem,
+    staffUsers, addStaffUser, updateStaffUser, deleteStaffUser,
   } = useStore();
   const { toast } = useToast();
 
@@ -107,15 +114,65 @@ export function AdminContent() {
     toast({ title: "Başarılı", description: "Ürün kaydedildi." });
   };
 
-  const [galleryForm, setGalleryForm] = useState({ url: "", category: "sac" as "sac" | "tirnak", label: "" });
+  const [galleryForm, setGalleryForm] = useState({ url: "", category: "sac" as "sac" | "tirnak", subcategory: "", label: "" });
   const [galleryFilter, setGalleryFilter] = useState("all");
   const galleryUpload = useImageInput(v => setGalleryForm(f => ({ ...f, url: v })));
 
   const handleGallerySubmit = () => {
     if (!galleryForm.url) return;
-    addGalleryItem(galleryForm);
-    setGalleryForm({ url: "", category: "sac", label: "" });
+    addGalleryItem({ url: galleryForm.url, category: galleryForm.category, subcategory: galleryForm.subcategory || undefined, label: galleryForm.label });
+    setGalleryForm({ url: "", category: "sac", subcategory: "", label: "" });
     toast({ title: "Başarılı", description: "Görsel eklendi." });
+  };
+
+  // Price list editing
+  const [priceTab, setPriceTab] = useState<keyof PriceList>("sac");
+  const [editingPrice, setEditingPrice] = useState<{ index: number; name: string; price: string } | null>(null);
+  const [newPriceItem, setNewPriceItem] = useState({ name: "", price: "" });
+
+  const handleSavePrice = () => {
+    if (!editingPrice) return;
+    updatePriceItem(priceTab, editingPrice.index, { name: editingPrice.name, price: editingPrice.price });
+    setEditingPrice(null);
+    toast({ title: "Başarılı", description: "Fiyat güncellendi." });
+  };
+
+  const handleAddPrice = () => {
+    if (!newPriceItem.name || !newPriceItem.price) return;
+    addPriceItem(priceTab, newPriceItem);
+    setNewPriceItem({ name: "", price: "" });
+    toast({ title: "Başarılı", description: "Fiyat eklendi." });
+  };
+
+  // Staff user management
+  const [staffUserForm, setStaffUserForm] = useState({ staffMemberId: "", username: "", pin: "", role: "uzman" as StaffRole });
+  const [showStaffUserForm, setShowStaffUserForm] = useState(false);
+  const [editingStaffUserId, setEditingStaffUserId] = useState<string | null>(null);
+
+  const handleStaffUserSubmit = () => {
+    if (!staffUserForm.username || !staffUserForm.pin || !staffUserForm.staffMemberId) {
+      toast({ title: "Hata", description: "Tüm alanları doldurun.", variant: "destructive" });
+      return;
+    }
+    if (staffUserForm.pin.length !== 4 || !/^\d{4}$/.test(staffUserForm.pin)) {
+      toast({ title: "Hata", description: "PIN 4 haneli rakam olmalı.", variant: "destructive" });
+      return;
+    }
+    if (editingStaffUserId) {
+      updateStaffUser(editingStaffUserId, { ...staffUserForm, name: siteContent.staffMembers.find(s => s.id === staffUserForm.staffMemberId)?.name ?? staffUserForm.username });
+      toast({ title: "Başarılı", description: "Hesap güncellendi." });
+    } else {
+      const staffName = siteContent.staffMembers.find(s => s.id === staffUserForm.staffMemberId)?.name ?? staffUserForm.username;
+      const ok = addStaffUser({ ...staffUserForm, name: staffName });
+      if (!ok) {
+        toast({ title: "Hata", description: "Bu kullanıcı adı zaten kullanılıyor.", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Başarılı", description: "Personel hesabı oluşturuldu." });
+    }
+    setStaffUserForm({ staffMemberId: "", username: "", pin: "", role: "uzman" });
+    setShowStaffUserForm(false);
+    setEditingStaffUserId(null);
   };
 
   const [contactForm, setContactForm] = useState<ContactInfo>({ ...siteContent.contactInfo });
@@ -158,13 +215,15 @@ export function AdminContent() {
 
   return (
     <Tabs defaultValue="hero" className="w-full">
-      <TabsList className="mb-6 grid w-full grid-cols-6 bg-background border border-border rounded-xl p-1">
-        <TabsTrigger value="hero" className="text-xs md:text-sm data-[state=active]:bg-primary">Hero & Logo</TabsTrigger>
-        <TabsTrigger value="store" className="text-xs md:text-sm data-[state=active]:bg-primary">Mağaza</TabsTrigger>
-        <TabsTrigger value="gallery" className="text-xs md:text-sm data-[state=active]:bg-primary">Galeri</TabsTrigger>
-        <TabsTrigger value="staff" className="text-xs md:text-sm data-[state=active]:bg-primary">Personel</TabsTrigger>
-        <TabsTrigger value="contact" className="text-xs md:text-sm data-[state=active]:bg-primary">İletişim</TabsTrigger>
-        <TabsTrigger value="preview" className="text-xs md:text-sm data-[state=active]:bg-primary">Önizleme</TabsTrigger>
+      <TabsList className="mb-6 flex w-full overflow-x-auto gap-1 bg-background border border-border rounded-xl p-1 h-auto">
+        <TabsTrigger value="hero" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Hero & Logo</TabsTrigger>
+        <TabsTrigger value="store" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Mağaza</TabsTrigger>
+        <TabsTrigger value="gallery" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Galeri</TabsTrigger>
+        <TabsTrigger value="staff" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Personel</TabsTrigger>
+        <TabsTrigger value="prices" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Fiyat Listesi</TabsTrigger>
+        <TabsTrigger value="accounts" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Personel Hesapları</TabsTrigger>
+        <TabsTrigger value="contact" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">İletişim</TabsTrigger>
+        <TabsTrigger value="preview" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Önizleme</TabsTrigger>
       </TabsList>
 
       {/* ── HERO & LOGO ── */}
@@ -308,7 +367,7 @@ export function AdminContent() {
               )}
             </div>
             <div className="w-[140px]">
-              <Select value={galleryForm.category} onValueChange={v => setGalleryForm(f => ({ ...f, category: v as "sac" | "tirnak" }))}>
+              <Select value={galleryForm.category} onValueChange={v => setGalleryForm(f => ({ ...f, category: v as "sac" | "tirnak", subcategory: "" }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="sac">Saç</SelectItem>
@@ -316,6 +375,19 @@ export function AdminContent() {
                 </SelectContent>
               </Select>
             </div>
+            {galleryForm.category === "sac" && (
+              <div className="w-[150px]">
+                <Select value={galleryForm.subcategory} onValueChange={v => setGalleryForm(f => ({ ...f, subcategory: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Alt kategori" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Belirtme</SelectItem>
+                    {SAC_SUBCATS.map(s => (
+                      <SelectItem key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="w-[140px]">
               <Input placeholder="Etiket (Opsiyonel)" value={galleryForm.label} onChange={e => setGalleryForm(f => ({ ...f, label: e.target.value }))} />
             </div>
@@ -429,6 +501,152 @@ export function AdminContent() {
               </div>
             </div>
           ))}
+        </div>
+      </TabsContent>
+
+      {/* ── FİYAT LİSTESİ ── */}
+      <TabsContent value="prices" className="space-y-6">
+        <div className="flex flex-wrap gap-2 mb-4">
+          {(Object.keys(PRICE_CAT_LABELS) as (keyof PriceList)[]).map(cat => (
+            <button
+              key={cat}
+              onClick={() => { setPriceTab(cat); setEditingPrice(null); }}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${priceTab === cat ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground hover:border-primary/50"}`}
+            >
+              {PRICE_CAT_LABELS[cat]}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          {siteContent.priceList[priceTab].map((item, i) => (
+            <div key={i} className="flex items-center gap-3 p-3 bg-background border border-border rounded-xl">
+              {editingPrice?.index === i ? (
+                <>
+                  <Input className="flex-1 h-8 text-sm" value={editingPrice.name} onChange={e => setEditingPrice(p => p ? { ...p, name: e.target.value } : null)} />
+                  <Input className="w-32 h-8 text-sm" value={editingPrice.price} onChange={e => setEditingPrice(p => p ? { ...p, price: e.target.value } : null)} placeholder="500 TL" />
+                  <Button size="sm" className="bg-[#b84d5b] text-white h-8 px-3" onClick={handleSavePrice}>Kaydet</Button>
+                  <Button size="sm" variant="outline" className="h-8 px-3" onClick={() => setEditingPrice(null)}>İptal</Button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm font-medium">{item.name}</span>
+                  <span className="text-sm font-bold text-accent">{item.price}</span>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingPrice({ index: i, name: item.name, price: item.price })}>
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => deletePriceItem(priceTab, i)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="p-4 border border-dashed border-border rounded-xl bg-background space-y-3">
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Yeni Fiyat Ekle</p>
+          <div className="flex gap-2 flex-wrap">
+            <Input className="flex-1 min-w-[180px]" placeholder="Hizmet adı (Örn: Saç Kesim)" value={newPriceItem.name} onChange={e => setNewPriceItem(p => ({ ...p, name: e.target.value }))} />
+            <Input className="w-36" placeholder="Fiyat (Örn: 500 TL)" value={newPriceItem.price} onChange={e => setNewPriceItem(p => ({ ...p, price: e.target.value }))} />
+            <Button onClick={handleAddPrice} className="gap-2 bg-[#b84d5b] text-white">
+              <Plus className="w-4 h-4" /> Ekle
+            </Button>
+          </div>
+        </div>
+      </TabsContent>
+
+      {/* ── PERSONEL HESAPLARI ── */}
+      <TabsContent value="accounts" className="space-y-6">
+        <div className="p-4 border border-border/60 rounded-xl bg-background/50 text-sm text-muted-foreground">
+          <p className="flex items-center gap-2 font-medium text-foreground mb-1"><ShieldCheck className="w-4 h-4 text-primary" /> Personel Giriş Sistemi</p>
+          <p>Personeller <strong>/#personel</strong> adresinden kullanıcı adı ve PIN ile giriş yapabilir. Admin yetkisi yoktur — sadece kendi randevularını, müşterilerini ve çalışma saatlerini görebilirler.</p>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <h3 className="font-semibold text-lg">Personel Hesapları ({staffUsers.length})</h3>
+          <Button onClick={() => { setStaffUserForm({ staffMemberId: "", username: "", pin: "", role: "uzman" }); setEditingStaffUserId(null); setShowStaffUserForm(true); }} className="gap-2 bg-[#b84d5b] text-white hover:bg-[#b84d5b]/90">
+            <UserPlus className="w-4 h-4" /> Hesap Oluştur
+          </Button>
+        </div>
+
+        {showStaffUserForm && (
+          <div className="p-5 border border-border rounded-xl bg-background space-y-4">
+            <h4 className="font-medium text-sm flex items-center gap-2"><KeyRound className="w-4 h-4 text-primary" />{editingStaffUserId ? "Hesabı Düzenle" : "Yeni Personel Hesabı"}</h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Personel Seç</label>
+                <Select value={staffUserForm.staffMemberId} onValueChange={v => setStaffUserForm(f => ({ ...f, staffMemberId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Personel seçin" /></SelectTrigger>
+                  <SelectContent>
+                    {siteContent.staffMembers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name} — {s.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Kullanıcı Adı</label>
+                <Input placeholder="Örn: gulcan" value={staffUserForm.username} onChange={e => setStaffUserForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/\s/g, "") }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">PIN (4 haneli)</label>
+                <Input placeholder="Örn: 1234" maxLength={4} value={staffUserForm.pin} onChange={e => setStaffUserForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, "").slice(0, 4) }))} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Rütbe</label>
+                <Select value={staffUserForm.role} onValueChange={v => setStaffUserForm(f => ({ ...f, role: v as StaffRole }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="uzman">Uzman (Kısıtlı)</SelectItem>
+                    <SelectItem value="yonetici">Yönetici (Geniş Erişim)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleStaffUserSubmit} className="bg-[#b84d5b] text-white">Kaydet</Button>
+              <Button variant="outline" onClick={() => { setShowStaffUserForm(false); setEditingStaffUserId(null); }}>İptal</Button>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {staffUsers.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground border border-dashed border-border rounded-xl">
+              <KeyRound className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Henüz personel hesabı oluşturulmadı.</p>
+            </div>
+          ) : (
+            staffUsers.map(su => {
+              const member = siteContent.staffMembers.find(s => s.id === su.staffMemberId);
+              return (
+                <div key={su.id} className="flex items-center justify-between p-4 border border-border rounded-xl bg-background">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center">
+                      <span className="text-xs font-bold text-primary">{member?.initials || su.name.slice(0, 2).toUpperCase()}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{su.name}</p>
+                      <p className="text-xs text-muted-foreground">@{su.username} · PIN: {"•".repeat(4)} · <span className={su.role === "yonetici" ? "text-accent" : "text-muted-foreground"}>{su.role === "yonetici" ? "Yönetici" : "Uzman"}</span></p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => {
+                      setStaffUserForm({ staffMemberId: su.staffMemberId, username: su.username, pin: su.pin, role: su.role });
+                      setEditingStaffUserId(su.id);
+                      setShowStaffUserForm(true);
+                    }}>
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteStaffUser(su.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </TabsContent>
 

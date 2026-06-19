@@ -73,6 +73,26 @@ export type SiteUser = {
   createdAt: string;
 };
 
+export type StaffRole = "uzman" | "yonetici";
+
+export type StaffUser = {
+  id: string;
+  name: string;
+  staffMemberId: string;
+  username: string;
+  pin: string;
+  role: StaffRole;
+  createdAt: string;
+};
+
+export type WorkEntry = {
+  id: string;
+  staffUserId: string;
+  staffName: string;
+  checkIn: string;
+  checkOut?: string;
+};
+
 export type Review = {
   id: string;
   userId: string;
@@ -89,12 +109,13 @@ export type StoreProduct = {
   name: string;
   description: string;
   price: number;
-  imageUrl: string; // URL string or CSS gradient string
+  imageUrl: string;
 };
 
 export type GalleryItem = {
   id: string;
   category: "sac" | "tirnak";
+  subcategory?: string;
   url: string;
   label: string;
 };
@@ -107,7 +128,7 @@ export type StaffMember = {
   rating: number;
   initials: string;
   tags: string[];
-  imageUrl: string; // empty = show initials avatar
+  imageUrl: string;
 };
 
 export type ContactInfo = {
@@ -125,13 +146,56 @@ export type ContactInfo = {
   salonSlogan: string;
 };
 
+export type PriceItem = {
+  name: string;
+  price: string;
+};
+
+export type PriceList = {
+  sac: PriceItem[];
+  gelin: PriceItem[];
+  manikur: PriceItem[];
+  agda: PriceItem[];
+  makyaj: PriceItem[];
+};
+
 export type SiteContent = {
   heroImageUrl: string;
-  logoImageUrl: string; // empty = show text "BW"
+  logoImageUrl: string;
   storeProducts: StoreProduct[];
   galleryItems: GalleryItem[];
   staffMembers: StaffMember[];
   contactInfo: ContactInfo;
+  priceList: PriceList;
+};
+
+const DEFAULT_PRICE_LIST: PriceList = {
+  sac: [
+    { name: "Saç Kesim (Kısa)", price: "500 TL" },
+    { name: "Saç Kesim (Uzun)", price: "800 TL" },
+    { name: "Dip Boya", price: "1.200 TL" },
+    { name: "Röfle/Balayage", price: "2.500 TL" },
+    { name: "Ombre (başlangıç)", price: "5.000 TL" },
+    { name: "Keratin Bakım", price: "3.000 TL" },
+  ],
+  gelin: [
+    { name: "Gelin Paketi (Saç + Makyaj + Tırnak)", price: "12.500 TL" },
+    { name: "Nişan Paketi", price: "7.500 TL" },
+  ],
+  manikur: [
+    { name: "Klasik Manikür", price: "350 TL" },
+    { name: "Kalıcı Oje", price: "500 TL" },
+    { name: "Tırnak Uzatma", price: "1.200 TL" },
+    { name: "Pedikür", price: "600 TL" },
+  ],
+  agda: [
+    { name: "Tüm Vücut Ağda", price: "2.000 TL" },
+    { name: "Bölgesel Ağda", price: "300-600 TL" },
+  ],
+  makyaj: [
+    { name: "Günlük Makyaj", price: "1.000 TL" },
+    { name: "Gece Makyajı", price: "1.500 TL" },
+  ],
 };
 
 const DEFAULT_SITE_CONTENT: SiteContent = {
@@ -146,14 +210,14 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     { id: "p6", name: "Gül Yüz Bakım Kremi", description: "Saf gül özlü gece bakım kremi.", price: 680, imageUrl: "linear-gradient(135deg, #2a1f1f 0%, #1a1a1a 100%)" },
   ],
   galleryItems: [
-    { id: "g1", category: "sac", url: "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=800", label: "" },
-    { id: "g2", category: "sac", url: "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?auto=format&fit=crop&q=80&w=800", label: "" },
-    { id: "g3", category: "sac", url: "https://images.unsplash.com/photo-1620331311520-246422fd82f9?auto=format&fit=crop&q=80&w=800", label: "" },
-    { id: "g4", category: "sac", url: "https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&q=80&w=800", label: "" },
-    { id: "g5", category: "tirnak", url: "https://images.unsplash.com/photo-1519014816548-bf5fe059e98b?auto=format&fit=crop&q=80&w=800", label: "" },
-    { id: "g6", category: "tirnak", url: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&q=80&w=800", label: "" },
-    { id: "g7", category: "tirnak", url: "https://images.unsplash.com/photo-1599839619722-39751411ea63?auto=format&fit=crop&q=80&w=800", label: "" },
-    { id: "g8", category: "tirnak", url: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=800", label: "" },
+    { id: "g1", category: "sac", subcategory: "kesim", url: "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=800", label: "Saç Kesim" },
+    { id: "g2", category: "sac", subcategory: "ombre", url: "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?auto=format&fit=crop&q=80&w=800", label: "Ombre" },
+    { id: "g3", category: "sac", subcategory: "boyama", url: "https://images.unsplash.com/photo-1620331311520-246422fd82f9?auto=format&fit=crop&q=80&w=800", label: "Boyama" },
+    { id: "g4", category: "sac", subcategory: "sombre", url: "https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&q=80&w=800", label: "Sombre" },
+    { id: "g5", category: "tirnak", url: "https://images.unsplash.com/photo-1519014816548-bf5fe059e98b?auto=format&fit=crop&q=80&w=800", label: "Kalıcı Oje" },
+    { id: "g6", category: "tirnak", url: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&q=80&w=800", label: "Tırnak Tasarımı" },
+    { id: "g7", category: "tirnak", url: "https://images.unsplash.com/photo-1599839619722-39751411ea63?auto=format&fit=crop&q=80&w=800", label: "Protez Tırnak" },
+    { id: "g8", category: "tirnak", url: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=800", label: "Nail Art" },
   ],
   staffMembers: [
     { id: "s1", name: "Gülcan K.", title: "Saç Uzmanı", experience: "10 yıl deneyim", rating: 4.9, initials: "GK", tags: ["Kesim", "Boya", "Keratin"], imageUrl: "" },
@@ -174,6 +238,7 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     mapUrl: "",
     salonSlogan: "Ordu Altınordu'da Lüks Hizmet. Profesyonel kadromuzla güzelliğinize değer katıyoruz.",
   },
+  priceList: DEFAULT_PRICE_LIST,
 };
 
 const USER_COLORS = ["#b84d5b", "#bd8c74", "#e8a5b2", "#4caf7d", "#54352b"];
@@ -217,6 +282,18 @@ type StoreContextType = {
   isProfileModalOpen: boolean;
   setIsProfileModalOpen: (v: boolean) => void;
 
+  staffUsers: StaffUser[];
+  addStaffUser: (s: Omit<StaffUser, "id" | "createdAt">) => boolean;
+  updateStaffUser: (id: string, updates: Partial<Omit<StaffUser, "id">>) => void;
+  deleteStaffUser: (id: string) => void;
+  loginStaffUser: (username: string, pin: string) => StaffUser | null;
+  currentStaffUser: StaffUser | null;
+  setCurrentStaffUser: (u: StaffUser | null) => void;
+
+  workEntries: WorkEntry[];
+  addWorkEntry: (staffUserId: string, staffName: string) => void;
+  closeWorkEntry: (id: string) => void;
+
   reviews: Review[];
   addReview: (r: Omit<Review, "id" | "date">) => void;
   deleteReview: (id: string) => void;
@@ -236,6 +313,9 @@ type StoreContextType = {
   addStaffMember: (s: Omit<StaffMember, "id">) => void;
   updateStaffMember: (id: string, updates: Partial<StaffMember>) => void;
   deleteStaffMember: (id: string) => void;
+  updatePriceItem: (category: keyof PriceList, index: number, updates: Partial<PriceItem>) => void;
+  addPriceItem: (category: keyof PriceList, item: PriceItem) => void;
+  deletePriceItem: (category: keyof PriceList, index: number) => void;
 };
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -259,6 +339,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
+
+  const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
+  const [currentStaffUser, setCurrentStaffUser] = useState<StaffUser | null>(null);
+  const [workEntries, setWorkEntries] = useState<WorkEntry[]>([]);
+
   const [theme, setThemeState] = useState<"dark" | "light">(() => {
     return (localStorage.getItem("bw_theme") as "dark" | "light") ?? "dark";
   });
@@ -286,8 +371,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const keys = ["bw_appointments","bw_messages","bw_cart","bw_orders","bw_adisyonlar","bw_transactions","bw_inventory","bw_stock_movements","bw_users","bw_site_content","bw_reviews"];
-      const [a,m,c,o,ad,tr,inv,sm,usr,sc,rv] = keys.map(k => localStorage.getItem(k));
+      const keys = ["bw_appointments","bw_messages","bw_cart","bw_orders","bw_adisyonlar","bw_transactions","bw_inventory","bw_stock_movements","bw_users","bw_site_content","bw_reviews","bw_staff_users","bw_work_entries"];
+      const [a,m,c,o,ad,tr,inv,sm,usr,sc,rv,su,we] = keys.map(k => localStorage.getItem(k));
       if (a) setAppointments(JSON.parse(a));
       if (m) setMessages(JSON.parse(m));
       if (c) setCart(JSON.parse(c));
@@ -297,9 +382,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (inv) setInventory(JSON.parse(inv));
       if (sm) setStockMovements(JSON.parse(sm));
       if (usr) setUsers(JSON.parse(usr));
-      if (sc) setSiteContent({ ...DEFAULT_SITE_CONTENT, ...JSON.parse(sc) });
+      if (sc) {
+        const parsed = JSON.parse(sc);
+        setSiteContent({ ...DEFAULT_SITE_CONTENT, ...parsed, priceList: parsed.priceList ? { ...DEFAULT_PRICE_LIST, ...parsed.priceList } : DEFAULT_PRICE_LIST });
+      }
       if (rv) setReviews(JSON.parse(rv));
-      // Apply saved theme
+      if (su) setStaffUsers(JSON.parse(su));
+      if (we) setWorkEntries(JSON.parse(we));
+
       const savedTheme = localStorage.getItem("bw_theme") as "dark" | "light" | null;
       if (savedTheme === "light") {
         document.documentElement.classList.remove("dark");
@@ -314,6 +404,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const uStr = usr ? JSON.parse(usr) : [];
         const found = uStr.find((x: SiteUser) => x.id === currId);
         if (found) setCurrentUser(found);
+      }
+
+      const currStaffId = sessionStorage.getItem("bw_current_staff_id");
+      if (currStaffId && su) {
+        const suArr = JSON.parse(su) as StaffUser[];
+        const found = suArr.find(x => x.id === currStaffId);
+        if (found) setCurrentStaffUser(found);
       }
     } catch (e) { console.error("Error loading state", e); }
     setIsLoaded(true);
@@ -332,13 +429,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("bw_users", JSON.stringify(users));
     localStorage.setItem("bw_site_content", JSON.stringify(siteContent));
     localStorage.setItem("bw_reviews", JSON.stringify(reviews));
+    localStorage.setItem("bw_staff_users", JSON.stringify(staffUsers));
+    localStorage.setItem("bw_work_entries", JSON.stringify(workEntries));
 
     if (currentUser) {
       sessionStorage.setItem("bw_current_user_id", currentUser.id);
     } else {
       sessionStorage.removeItem("bw_current_user_id");
     }
-  }, [appointments, messages, cart, orders, adisyonlar, transactions, inventory, stockMovements, users, currentUser, siteContent, reviews, isLoaded]);
+
+    if (currentStaffUser) {
+      sessionStorage.setItem("bw_current_staff_id", currentStaffUser.id);
+    } else {
+      sessionStorage.removeItem("bw_current_staff_id");
+    }
+  }, [appointments, messages, cart, orders, adisyonlar, transactions, inventory, stockMovements, users, currentUser, siteContent, reviews, staffUsers, currentStaffUser, workEntries, isLoaded]);
 
   const addAppointment = (app: Omit<Appointment, "id">) =>
     setAppointments(prev => [...prev, { ...app, id: uid() }]);
@@ -453,6 +558,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  const addStaffUser = (s: Omit<StaffUser, "id" | "createdAt">) => {
+    if (staffUsers.find(u => u.username === s.username)) return false;
+    setStaffUsers(prev => [...prev, { ...s, id: uid(), createdAt: new Date().toISOString() }]);
+    return true;
+  };
+
+  const updateStaffUser = (id: string, updates: Partial<Omit<StaffUser, "id">>) => {
+    setStaffUsers(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
+    setCurrentStaffUser(prev => prev && prev.id === id ? { ...prev, ...updates } : prev);
+  };
+
+  const deleteStaffUser = (id: string) => {
+    setStaffUsers(prev => prev.filter(u => u.id !== id));
+    if (currentStaffUser?.id === id) setCurrentStaffUser(null);
+  };
+
+  const loginStaffUser = (username: string, pin: string): StaffUser | null => {
+    const u = staffUsers.find(x => x.username === username && x.pin === pin);
+    if (!u) return null;
+    setCurrentStaffUser(u);
+    return u;
+  };
+
+  const addWorkEntry = (staffUserId: string, staffName: string) => {
+    setWorkEntries(prev => [...prev, { id: uid(), staffUserId, staffName, checkIn: new Date().toISOString() }]);
+  };
+
+  const closeWorkEntry = (id: string) => {
+    setWorkEntries(prev => prev.map(e => e.id === id ? { ...e, checkOut: new Date().toISOString() } : e));
+  };
+
   const updateSiteContent = (updates: Partial<SiteContent>) => setSiteContent(prev => ({ ...prev, ...updates }));
   const updateStoreProduct = (id: string, updates: Partial<StoreProduct>) => setSiteContent(prev => ({ ...prev, storeProducts: prev.storeProducts.map(p => p.id === id ? { ...p, ...updates } : p) }));
   const addStoreProduct = (p: Omit<StoreProduct, "id">) => setSiteContent(prev => ({ ...prev, storeProducts: [...prev.storeProducts, { ...p, id: uid() }] }));
@@ -462,6 +598,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const addStaffMember = (s: Omit<StaffMember, "id">) => setSiteContent(prev => ({ ...prev, staffMembers: [...prev.staffMembers, { ...s, id: uid() }] }));
   const updateStaffMember = (id: string, updates: Partial<StaffMember>) => setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.map(s => s.id === id ? { ...s, ...updates } : s) }));
   const deleteStaffMember = (id: string) => setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.filter(s => s.id !== id) }));
+
+  const updatePriceItem = (category: keyof PriceList, index: number, updates: Partial<PriceItem>) => {
+    setSiteContent(prev => ({
+      ...prev,
+      priceList: {
+        ...prev.priceList,
+        [category]: prev.priceList[category].map((item, i) => i === index ? { ...item, ...updates } : item),
+      },
+    }));
+  };
+
+  const addPriceItem = (category: keyof PriceList, item: PriceItem) => {
+    setSiteContent(prev => ({
+      ...prev,
+      priceList: {
+        ...prev.priceList,
+        [category]: [...prev.priceList[category], item],
+      },
+    }));
+  };
+
+  const deletePriceItem = (category: keyof PriceList, index: number) => {
+    setSiteContent(prev => ({
+      ...prev,
+      priceList: {
+        ...prev.priceList,
+        [category]: prev.priceList[category].filter((_, i) => i !== index),
+      },
+    }));
+  };
 
   const addReview = (r: Omit<Review, "id" | "date">) =>
     setReviews(prev => [...prev, { ...r, id: uid(), date: new Date().toISOString() }]);
@@ -478,9 +644,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       inventory, addInventoryProduct, updateInventoryProduct, deleteInventoryProduct,
       stockMovements, addStockMovement,
       users, currentUser, registerUser, loginUser, logoutUser, updateUser, isAuthModalOpen, setIsAuthModalOpen, isProfileModalOpen, setIsProfileModalOpen,
+      staffUsers, addStaffUser, updateStaffUser, deleteStaffUser, loginStaffUser, currentStaffUser, setCurrentStaffUser,
+      workEntries, addWorkEntry, closeWorkEntry,
       reviews, addReview, deleteReview,
       theme, setTheme, language, setLanguage,
       siteContent, updateSiteContent, updateStoreProduct, addStoreProduct, deleteStoreProduct, addGalleryItem, deleteGalleryItem, addStaffMember, updateStaffMember, deleteStaffMember,
+      updatePriceItem, addPriceItem, deletePriceItem,
     }}>
       {children}
     </StoreContext.Provider>

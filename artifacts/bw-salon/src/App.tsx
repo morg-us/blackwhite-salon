@@ -18,13 +18,19 @@ import { Contact } from "@/components/Contact";
 import { LiveChat } from "@/components/LiveChat";
 import { Footer } from "@/components/Footer";
 import { AdminPanel } from "@/components/AdminPanel";
+import { StaffPanel } from "@/components/StaffPanel";
+
+type PageView = "main" | "admin" | "personel";
 
 function MainApp() {
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [view, setView] = useState<PageView>("main");
 
   useEffect(() => {
     const handleHashChange = () => {
-      setIsAdmin(window.location.hash === "#admin");
+      const hash = window.location.hash;
+      if (hash === "#admin") setView("admin");
+      else if (hash === "#personel") setView("personel");
+      else setView("main");
     };
 
     handleHashChange();
@@ -32,9 +38,8 @@ function MainApp() {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  if (isAdmin) {
-    return <AdminPanel />;
-  }
+  if (view === "admin") return <AdminPanel />;
+  if (view === "personel") return <StaffPanel />;
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-primary-foreground font-sans">
@@ -51,7 +56,7 @@ function MainApp() {
         <Contact />
       </main>
       <Footer />
-      
+
       <CartDrawer />
       <LiveChat />
     </div>
@@ -59,8 +64,6 @@ function MainApp() {
 }
 
 function App() {
-  // Theme is initialized inside StoreProvider from localStorage.
-  // Apply dark mode on first load before provider initialises:
   useEffect(() => {
     const saved = localStorage.getItem("bw_theme");
     if (saved === "light") {

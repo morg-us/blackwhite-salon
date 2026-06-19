@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useStore, Adisyon, AdisyonItem, Transaction } from "@/lib/store";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -280,13 +281,13 @@ function OzetTab() {
 
 // ─── Adisyon Tab ─────────────────────────────────────────────────────────────
 function AdisyonTab() {
-  const { adisyonlar, addAdisyon, updateAdisyon, deleteAdisyon } = useStore();
+  const { adisyonlar, addAdisyon, updateAdisyon, deleteAdisyon, siteContent } = useStore();
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Form state
   const [customerName, setCustomerName] = useState("");
-  const [staff, setStaff] = useState("Gülcan K.");
+  const [staff, setStaff] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"nakit" | "kart" | "havale">("nakit");
   const [discount, setDiscount] = useState(0);
   const [note, setNote] = useState("");
@@ -350,12 +351,12 @@ function AdisyonTab() {
               <label className="text-xs text-muted-foreground mb-1 block">Uzman</label>
               <Select value={staff} onValueChange={setStaff}>
                 <SelectTrigger className="bg-background border-border">
-                  <SelectValue />
+                  <SelectValue placeholder="Uzman seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Gülcan K.">Gülcan K.</SelectItem>
-                  <SelectItem value="Buse T.">Buse T.</SelectItem>
-                  <SelectItem value="Zeynep A.">Zeynep A.</SelectItem>
+                  {siteContent.staffMembers.map(s => (
+                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
