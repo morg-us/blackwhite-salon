@@ -72,13 +72,16 @@ function App() {
     if (lang) document.documentElement.lang = lang;
   }, []);
 
+  const isDev = import.meta.env.DEV;
   const basePath = import.meta.env.BASE_URL ?? "/";
-  const clerkProxyUrl = `${window.location.origin}${basePath}api/__clerk`.replace(/\/+/g, "/").replace(":/", "://");
+  const clerkProxyUrl = isDev
+    ? undefined
+    : `${window.location.origin}${basePath}api/__clerk`.replace(/\/+/g, "/").replace(":/", "://");
 
   return (
     <ClerkProvider
       publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
-      proxyUrl={clerkProxyUrl}
+      {...(clerkProxyUrl ? { proxyUrl: clerkProxyUrl } : {})}
     >
       <StoreProvider>
         <TooltipProvider>
