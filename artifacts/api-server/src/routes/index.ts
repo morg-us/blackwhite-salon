@@ -14,6 +14,7 @@ import stockMovementsRouter from "./salon/stock-movements";
 import staffUsersRouter from "./salon/staff-users";
 import workEntriesRouter from "./salon/work-entries";
 import siteUsersRouter from "./salon/site-users";
+import smsNotificationsRouter from "./salon/sms-notifications";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use("/stock-movements", stockMovementsRouter);
 router.use("/staff-users", staffUsersRouter);
 router.use("/work-entries", workEntriesRouter);
 router.use("/site-users", siteUsersRouter);
+router.use("/sms-notifications", smsNotificationsRouter);
 
 export default router;

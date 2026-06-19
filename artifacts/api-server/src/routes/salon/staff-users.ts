@@ -13,6 +13,7 @@ function mapRow(row: typeof staffUsersTable.$inferSelect) {
     username: row.username,
     pin: row.pin,
     role: row.role,
+    phone: row.phone,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -28,7 +29,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { id, name, staffMemberId, username, pin, role } = req.body;
+    const { id, name, staffMemberId, username, pin, role, phone } = req.body;
     const existing = await db.select().from(staffUsersTable).where(eq(staffUsersTable.username, username));
     if (existing.length > 0) return res.status(409).json({ error: "Username already exists" });
     const [created] = await db.insert(staffUsersTable).values({
@@ -38,6 +39,7 @@ router.post("/", async (req, res) => {
       username,
       pin,
       role: role ?? "uzman",
+      phone: phone ?? "",
     }).returning();
     res.status(201).json(mapRow(created));
   } catch {
@@ -47,13 +49,14 @@ router.post("/", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   try {
-    const { name, staffMemberId, username, pin, role } = req.body;
+    const { name, staffMemberId, username, pin, role, phone } = req.body;
     const [updated] = await db.update(staffUsersTable).set({
       ...(name !== undefined && { name }),
       ...(staffMemberId !== undefined && { staffMemberId }),
       ...(username !== undefined && { username }),
       ...(pin !== undefined && { pin }),
       ...(role !== undefined && { role }),
+      ...(phone !== undefined && { phone }),
     }).where(eq(staffUsersTable.id, req.params.id)).returning();
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(mapRow(updated));

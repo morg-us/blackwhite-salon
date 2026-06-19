@@ -196,8 +196,22 @@ export const staffUsersTable = pgTable("salon_staff_users", {
   username: text("username").notNull().unique(),
   pin: text("pin").notNull(),
   role: text("role").notNull().default("uzman"),
+  phone: text("phone").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ── SMS Notifications (log) ────────────────────────────────
+export const smsNotificationsTable = pgTable("salon_sms_notifications", {
+  id: serial("id").primaryKey(),
+  to: text("to").notNull(),
+  recipientName: text("recipient_name").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull().default("appointment"),
+  appointmentId: integer("appointment_id"),
+  status: text("status").notNull().default("simulated"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export const insertSmsNotificationSchema = createInsertSchema(smsNotificationsTable).omit({ id: true, createdAt: true });
 
 // ── Work Entries (check-in/out) ────────────────────────────
 export const workEntriesTable = pgTable("salon_work_entries", {

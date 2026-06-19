@@ -82,6 +82,7 @@ export type StaffUser = {
   username: string;
   pin: string;
   role: StaffRole;
+  phone: string;
   createdAt: string;
 };
 

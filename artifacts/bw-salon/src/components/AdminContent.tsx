@@ -9,7 +9,100 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Instagram, MessageCircle, Clock, Facebook, KeyRound, UserPlus, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Instagram, MessageCircle, Clock, Facebook, KeyRound, UserPlus, ShieldCheck, MessageSquare, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+
+type SmsNotification = {
+  id: number;
+  to: string;
+  recipientName: string;
+  message: string;
+  type: string;
+  appointmentId: number | null;
+  status: string;
+  createdAt: string;
+};
+
+function SmsLog() {
+  const [logs, setLogs] = useState<SmsNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/sms-notifications")
+      .then(r => r.json())
+      .then(data => { setLogs(Array.isArray(data) ? data : []); })
+      .catch(() => setLogs([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const statusIcon = (status: string) => {
+    if (status === "sent") return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+    if (status.startsWith("failed")) return <AlertCircle className="w-4 h-4 text-destructive" />;
+    return <MessageSquare className="w-4 h-4 text-muted-foreground" />;
+  };
+
+  const statusLabel = (status: string) => {
+    if (status === "sent") return <span className="text-green-600 font-medium text-xs">Gönderildi</span>;
+    if (status.startsWith("failed")) return <span className="text-destructive font-medium text-xs">Başarısız</span>;
+    return <span className="text-muted-foreground text-xs">Simüle</span>;
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="font-semibold text-lg flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" /> SMS Bildirimleri</h3>
+          <p className="text-sm text-muted-foreground mt-1">Randevu alındığında personele gönderilen SMS kayıtları.</p>
+        </div>
+        <button
+          onClick={() => { setLoading(true); fetch("/api/sms-notifications").then(r => r.json()).then(d => setLogs(Array.isArray(d) ? d : [])).finally(() => setLoading(false)); }}
+          className="text-xs text-primary hover:underline"
+        >
+          Yenile
+        </button>
+      </div>
+
+      <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl text-xs text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground">📡 Netgsm entegrasyonu</p>
+        <p>Gerçek SMS göndermek için <code className="bg-muted px-1 rounded">NETGSM_USERNAME</code> ve <code className="bg-muted px-1 rounded">NETGSM_PASSWORD</code> ortam değişkenlerini ekleyin. Eklenene kadar SMS'ler burada "Simüle" olarak görünür.</p>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+          <Loader2 className="w-5 h-5 animate-spin" /> Yükleniyor...
+        </div>
+      ) : logs.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground border border-dashed border-border rounded-xl">
+          <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-20" />
+          <p className="text-sm">Henüz SMS kaydı yok.</p>
+          <p className="text-xs mt-1">Bir randevu alındığında burada görünecek.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {logs.map(log => (
+            <div key={log.id} className="p-4 border border-border rounded-xl bg-background space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {statusIcon(log.status)}
+                  <div>
+                    <p className="font-medium text-sm">{log.recipientName}</p>
+                    <p className="text-xs text-muted-foreground">{log.to}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {statusLabel(log.status)}
+                  <span className="text-[10px] text-muted-foreground/60">
+                    {new Date(log.createdAt).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground/80 bg-muted/40 rounded-lg p-2 whitespace-pre-wrap">{log.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   constructor(props: { children: ReactNode }) {
@@ -181,7 +274,7 @@ export function AdminContent() {
   };
 
   // Staff user management
-  const [staffUserForm, setStaffUserForm] = useState({ staffMemberId: "", username: "", pin: "", role: "uzman" as StaffRole });
+  const [staffUserForm, setStaffUserForm] = useState({ staffMemberId: "", username: "", pin: "", role: "uzman" as StaffRole, phone: "" });
   const [showStaffUserForm, setShowStaffUserForm] = useState(false);
   const [editingStaffUserId, setEditingStaffUserId] = useState<string | null>(null);
 
@@ -206,7 +299,7 @@ export function AdminContent() {
       }
       toast({ title: "Başarılı", description: "Personel hesabı oluşturuldu." });
     }
-    setStaffUserForm({ staffMemberId: "", username: "", pin: "", role: "uzman" });
+    setStaffUserForm({ staffMemberId: "", username: "", pin: "", role: "uzman", phone: "" });
     setShowStaffUserForm(false);
     setEditingStaffUserId(null);
   };
@@ -259,6 +352,7 @@ export function AdminContent() {
         <TabsTrigger value="prices" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Fiyat Listesi</TabsTrigger>
         <TabsTrigger value="accounts" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Personel Hesapları</TabsTrigger>
         <TabsTrigger value="contact" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">İletişim</TabsTrigger>
+        <TabsTrigger value="sms" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">📱 SMS Geçmişi</TabsTrigger>
         <TabsTrigger value="preview" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Önizleme</TabsTrigger>
       </TabsList>
 
@@ -606,7 +700,7 @@ export function AdminContent() {
 
         <div className="flex justify-between items-center">
           <h3 className="font-semibold text-lg">Personel Hesapları ({staffUsers.length})</h3>
-          <Button onClick={() => { setStaffUserForm({ staffMemberId: "", username: "", pin: "", role: "uzman" }); setEditingStaffUserId(null); setShowStaffUserForm(true); }} className="gap-2 bg-[#b84d5b] text-white hover:bg-[#b84d5b]/90">
+          <Button onClick={() => { setStaffUserForm({ staffMemberId: "", username: "", pin: "", role: "uzman", phone: "" }); setEditingStaffUserId(null); setShowStaffUserForm(true); }} className="gap-2 bg-[#b84d5b] text-white hover:bg-[#b84d5b]/90">
             <UserPlus className="w-4 h-4" /> Hesap Oluştur
           </Button>
         </div>
@@ -644,6 +738,15 @@ export function AdminContent() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Telefon (SMS için)</label>
+                <Input
+                  type="tel"
+                  placeholder="05xx xxx xx xx"
+                  value={staffUserForm.phone}
+                  onChange={e => setStaffUserForm(f => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <Button onClick={handleStaffUserSubmit} className="bg-[#b84d5b] text-white">Kaydet</Button>
@@ -670,11 +773,12 @@ export function AdminContent() {
                     <div>
                       <p className="font-medium text-sm">{su.name}</p>
                       <p className="text-xs text-muted-foreground">@{su.username} · PIN: {"•".repeat(4)} · <span className={su.role === "yonetici" ? "text-accent" : "text-muted-foreground"}>{su.role === "yonetici" ? "Yönetici" : "Uzman"}</span></p>
+                      {su.phone && <p className="text-xs text-muted-foreground/70 flex items-center gap-1"><Phone className="w-3 h-3" /> {su.phone}</p>}
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => {
-                      setStaffUserForm({ staffMemberId: su.staffMemberId, username: su.username, pin: su.pin, role: su.role });
+                      setStaffUserForm({ staffMemberId: su.staffMemberId, username: su.username, pin: su.pin, role: su.role, phone: su.phone ?? "" });
                       setEditingStaffUserId(su.id);
                       setShowStaffUserForm(true);
                     }}>
@@ -778,6 +882,11 @@ export function AdminContent() {
           <p className="font-medium text-foreground mb-1">💡 Bilgi</p>
           <p>Kaydet butonuna tıkladığınızda tüm değişiklikler anında sitede yansır. Değişiklikleri kaydetmeden sekme değiştirirseniz form sıfırlanmaz.</p>
         </div>
+      </TabsContent>
+
+      {/* ── SMS GEÇMİŞİ ── */}
+      <TabsContent value="sms">
+        <SmsLog />
       </TabsContent>
 
       {/* ── ÖNİZLEME ── */}
