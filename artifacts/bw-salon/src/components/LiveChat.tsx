@@ -1,96 +1,32 @@
-import { useState, useRef, useEffect } from "react";
-import { MessageSquare, X, Send, Phone } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { MessageSquare, X, Send, Phone, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStore } from "@/lib/store";
 
-type ChatMsg = { id: string; text: string; sender: "user" | "bot"; link?: { label: string; href: string } };
+type ChatMsg = { id: string; text: string; sender: "user" | "bot"; streaming?: boolean };
 
-function getBotReply(input: string, contactInfo: { phone1: string; phone2: string; whatsappNumber: string; address: string; workingHoursWeekday: string; workingHoursSunday: string }, staffMembers: { name: string; title: string }[]): { text: string; link?: { label: string; href: string } } {
-  const msg = input.toLowerCase().trim();
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
-  // Greetings
-  if (/^(merhaba|selam|hey|hi|hello|iyi günler|günaydın|iyi akşamlar)/.test(msg)) {
-    return { text: "Merhaba! 👋 Black White Güzellik Salonu'na hoş geldiniz. Size nasıl yardımcı olabilirim?\n\n• Randevu almak\n• Fiyat öğrenmek\n• Çalışma saatleri\n• Uzmanlarımız\n• İletişim bilgileri" };
-  }
-
-  // Appointment
-  if (/randev|book|appointment|rezerv/.test(msg)) {
-    return { text: "Randevu almak çok kolay! 📅\n\nSayfamızın 'Hızlı Randevu' bölümünden online randevu oluşturabilirsiniz. Dilediğiniz uzmanı ve saati seçmeniz yeterli.\n\nYa da bizi aramak ister misiniz?", link: { label: `📞 ${contactInfo.phone1}`, href: `tel:${contactInfo.phone1.replace(/\s/g, "")}` } };
-  }
-
-  // WhatsApp
-  if (/whatsapp|wts|wp/.test(msg)) {
-    return { text: "WhatsApp'tan da bize ulaşabilirsiniz! 💬", link: { label: "WhatsApp'ta Yaz", href: `https://wa.me/${contactInfo.whatsappNumber.replace(/[^0-9]/g, "")}` } };
-  }
-
-  // Price / pricing
-  if (/fiyat|ücret|kaç para|ne kadar|price|cost/.test(msg)) {
-    return { text: "Fiyatlarımız hizmet türüne göre değişmektedir:\n\n✂️ Saç Kesimi: 250–450 TL\n🎨 Saç Boyama: 500–1200 TL\n💅 Manikür: 200–400 TL\n💄 Makyaj: 400–800 TL\n🌸 Gelin Paketi: 2500 TL'den başlayan fiyatlarla\n\nDetaylı fiyat listesi için 'Fiyat Listesi' bölümünü inceleyebilirsiniz." };
-  }
-
-  // Working hours
-  if (/saat|çalış|açık|kaça kadar|ne zaman|zaman|hour|open|close/.test(msg)) {
-    return { text: `⏰ Çalışma Saatlerimiz:\n\n${contactInfo.workingHoursWeekday}\n${contactInfo.workingHoursSunday}\n\nSizi bekliyoruz! 😊` };
-  }
-
-  // Address / location
-  if (/adres|nerede|konum|lokasyon|where|location/.test(msg)) {
-    return { text: `📍 Adresimiz:\n${contactInfo.address}\n\nYol tarifi için haritayı açabilirsiniz.` };
-  }
-
-  // Phone / contact
-  if (/telefon|ara|call|numara|iletişim|contact/.test(msg)) {
-    return { text: `📞 Bize ulaşın:\n${contactInfo.phone1}\n${contactInfo.phone2 ? contactInfo.phone2 : ""}\n\nAramanızı bekliyoruz!`, link: { label: `Hemen Ara: ${contactInfo.phone1}`, href: `tel:${contactInfo.phone1.replace(/\s/g, "")}` } };
-  }
-
-  // Staff / specialists
-  if (/uzman|personel|staff|ekip|kim|çalışan|kuaför/.test(msg)) {
-    const staffList = staffMembers.map(s => `👤 ${s.name} — ${s.title}`).join("\n");
-    return { text: `Uzman kadromuz:\n\n${staffList}\n\nRandevu oluştururken tercih ettiğiniz uzmanı seçebilirsiniz!` };
-  }
-
-  // Services
-  if (/hizmet|servis|service|ne yapıyor|neler yapıyor/.test(msg)) {
-    return { text: "Sunduğumuz hizmetler:\n\n✂️ Saç Kesimi & Şekillendirme\n🎨 Saç Boyama & Röfle\n💆 Keratin & Bakım\n💄 Gelin & Davet Makyajı\n💅 Manikür & Pedikür\n🌸 Kalıcı Oje\n🪒 Ağda & Epilasyon\n🧴 Cilt Bakımı" };
-  }
-
-  // Hair
-  if (/saç|kesim|boya|röfle|keratin|balayage/.test(msg)) {
-    return { text: "Saç hizmetlerimiz için uzman ekibimiz hazır! 💇‍♀️\n\n• Kesim & Şekillendirme\n• Boya & Röfle\n• Balayage & Highlights\n• Keratin Düzleştirme\n• Saç Bakım Maskeleri\n\nRandevu almak ister misiniz?" };
-  }
-
-  // Nail
-  if (/tırnak|manikür|pedikür|kalıcı oje|nail|protez/.test(msg)) {
-    return { text: "Tırnak hizmetlerimiz için Zeynep hanım sizleri bekliyor! 💅\n\n• Manikür & Pedikür\n• Kalıcı Oje\n• Protez Tırnak\n• Nail Art Tasarımı\n\nRandevu almak için aşağıdaki butonu kullanabilirsiniz." };
-  }
-
-  // Makeup
-  if (/makyaj|makeup|gelin|düğün|davet/.test(msg)) {
-    return { text: "Özel günleriniz için profesyonel makyaj hizmetimiz mevcut! 💄\n\n• Gelin Makyajı\n• Davet & Gece Makyajı\n• Doğal Günlük Makyaj\n• Fotoğraf Çekimi Makyajı\n\nBuse hanım ile randevu almak ister misiniz?" };
-  }
-
-  // Teşekkür / thanks
-  if (/teşekkür|sağ ol|tamam|anladım|thanks|thank you/.test(msg)) {
-    return { text: "Rica ederiz! 😊 Başka bir konuda yardımcı olabilir miyiz? Sizi Black White Güzellik Salonu'nda ağırlamaktan mutluluk duyarız!" };
-  }
-
-  // Default fallback
-  return {
-    text: "Sorunuzu tam anlayamadım, ama size yardımcı olmaktan memnuniyet duyarım! 😊\n\nAşağıdaki konularda bilgi verebilirim:\n• Randevu almak\n• Fiyatlar\n• Çalışma saatleri\n• Uzmanlarımız\n• Adres & iletişim\n\nYa da doğrudan bizi aramak ister misiniz?",
-    link: { label: `📞 Bizi Arayın`, href: `tel:${contactInfo.phone1.replace(/\s/g, "")}` }
-  };
+async function createSession(): Promise<{ sessionId: number; token: string } | null> {
+  try {
+    const r = await fetch(`${BASE}/api/chat/session`, { method: "POST", headers: { "Content-Type": "application/json" } });
+    if (!r.ok) return null;
+    return r.json();
+  } catch { return null; }
 }
 
 export function LiveChat() {
   const { siteContent } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([
-    { id: "1", text: `Merhaba! 👋 Black White Güzellik Salonu'na hoş geldiniz.\n\nSize nasıl yardımcı olabilirim?\n• Randevu almak\n• Fiyat öğrenmek\n• Uzmanlarımız\n• Çalışma saatleri`, sender: "bot" }
+    { id: "0", text: "Merhaba! 👋 Black White Güzellik Salonu'na hoş geldiniz.\n\nSize nasıl yardımcı olabilirim?\n• Randevu almak\n• Fiyat öğrenmek\n• Uzmanlarımız\n• Çalışma saatleri", sender: "bot" }
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [useAI, setUseAI] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -99,26 +35,114 @@ export function LiveChat() {
     }
   }, [messages, isTyping, isOpen]);
 
-  const handleSend = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (isOpen && !sessionToken) {
+      createSession().then(s => {
+        if (s) setSessionToken(s.token);
+        else setUseAI(false);
+      });
+    }
+  }, [isOpen, sessionToken]);
+
+  const sendWithAI = useCallback(async (text: string) => {
+    if (!sessionToken) return false;
+    try {
+      const res = await fetch(`${BASE}/api/chat/session/${sessionToken}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+      if (!res.ok || !res.body) return false;
+
+      const botId = Date.now().toString() + "_bot";
+      setMessages(prev => [...prev, { id: botId, text: "", sender: "bot", streaming: true }]);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const parsed = JSON.parse(line.slice(6));
+            if (parsed.content) {
+              setMessages(prev => prev.map(m =>
+                m.id === botId ? { ...m, text: m.text + parsed.content } : m
+              ));
+            }
+            if (parsed.done || parsed.error) {
+              setMessages(prev => prev.map(m => m.id === botId ? { ...m, streaming: false } : m));
+            }
+          } catch {}
+        }
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }, [sessionToken]);
+
+  const sendKeywordFallback = useCallback((text: string) => {
+    const msg = text.toLowerCase();
+    const ci = siteContent.contactInfo;
+    const sm = siteContent.staffMembers;
+
+    let reply = "Sorunuzu tam anlayamadım. Size nasıl yardımcı olabilirim?\n• Randevu • Fiyatlar • Çalışma saatleri • Uzmanlar";
+
+    if (/merhaba|selam|hey|hi/.test(msg)) reply = "Merhaba! 👋 Black White Güzellik Salonu'na hoş geldiniz! Size nasıl yardımcı olabilirim?";
+    else if (/randev|book|rezerv/.test(msg)) reply = `Randevu almak için sayfamızdaki "Hızlı Randevu" bölümünü kullanabilirsiniz! 📅\n\nYa da bizi arayın: ${ci.phone1}`;
+    else if (/fiyat|ücret|kaç para|ne kadar/.test(msg)) reply = "💇 Saç Kesimi: 250–450₺\n🎨 Boyama: 500–1200₺\n💅 Manikür: 200–400₺\n💄 Makyaj: 400–800₺\n🌸 Gelin Paketi: 2500₺+";
+    else if (/saat|çalış|açık|kaç/.test(msg)) reply = `⏰ ${ci.workingHoursWeekday}\n${ci.workingHoursSunday}`;
+    else if (/adres|nerede|konum/.test(msg)) reply = `📍 ${ci.address}`;
+    else if (/telefon|ara|numara|iletişim/.test(msg)) reply = `📞 ${ci.phone1}${ci.phone2 ? "\n" + ci.phone2 : ""}`;
+    else if (/uzman|personel|ekip|kim/.test(msg)) reply = sm.map(s => `👤 ${s.name} — ${s.title}`).join("\n");
+    else if (/whatsapp/.test(msg)) reply = `WhatsApp: ${ci.whatsappNumber}`;
+    else if (/teşekkür|sağ ol|tamam/.test(msg)) reply = "Rica ederiz! 😊 Başka bir konuda yardımcı olabilir miyiz?";
+
+    setTimeout(() => {
+      setIsTyping(false);
+      setMessages(prev => [...prev, { id: Date.now().toString(), text: reply, sender: "bot" }]);
+    }, 700);
+  }, [siteContent]);
+
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || isTyping) return;
 
     const userMsg: ChatMsg = { id: Date.now().toString(), text: trimmed, sender: "user" };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const reply = getBotReply(trimmed, siteContent.contactInfo, siteContent.staffMembers);
+    if (useAI && sessionToken) {
+      const ok = await sendWithAI(trimmed);
       setIsTyping(false);
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        text: reply.text,
-        sender: "bot",
-        link: reply.link,
-      }]);
-    }, 800 + Math.random() * 600);
+      if (!ok) sendKeywordFallback(trimmed);
+    } else {
+      sendKeywordFallback(trimmed);
+    }
+  };
+
+  const handleQuickReply = (q: string) => {
+    const userMsg: ChatMsg = { id: Date.now().toString(), text: q, sender: "user" };
+    setMessages(prev => [...prev, userMsg]);
+    setIsTyping(true);
+    if (useAI && sessionToken) {
+      sendWithAI(q).then(ok => {
+        setIsTyping(false);
+        if (!ok) sendKeywordFallback(q);
+      });
+    } else {
+      sendKeywordFallback(q);
+    }
   };
 
   const quickReplies = ["Randevu almak istiyorum", "Fiyatlar nedir?", "Çalışma saatleri?", "Uzmanlarınız kimler?"];
@@ -131,19 +155,23 @@ export function LiveChat() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 right-3 sm:right-6 z-50 w-[calc(100vw-24px)] max-w-[340px] h-[480px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-24 right-3 sm:right-6 z-50 w-[calc(100vw-24px)] max-w-[340px] h-[500px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="bg-primary p-3 flex justify-between items-center text-primary-foreground shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <MessageSquare className="w-4 h-4" />
+                  {useAI ? <Sparkles className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
                 </div>
                 <div>
-                  <p className="font-bold text-sm leading-tight">Canlı Destek</p>
+                  <p className="font-bold text-sm leading-tight">
+                    {useAI ? "AI Asistan" : "Canlı Destek"}
+                  </p>
                   <div className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    <span className="text-[10px] opacity-80">Çevrimiçi</span>
+                    <span className="text-[10px] opacity-80">
+                      {useAI ? "Yapay Zeka Aktif" : "Çevrimiçi"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -171,21 +199,12 @@ export function LiveChat() {
                       : "bg-card border border-border rounded-tl-sm"
                   }`}>
                     {msg.text}
+                    {msg.streaming && <span className="inline-block w-1 h-3 ml-0.5 bg-current animate-pulse rounded-sm" />}
                   </div>
-                  {msg.link && (
-                    <a
-                      href={msg.link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary/20 transition-colors font-medium"
-                    >
-                      {msg.link.label}
-                    </a>
-                  )}
                 </div>
               ))}
 
-              {isTyping && (
+              {isTyping && !messages[messages.length - 1]?.streaming && (
                 <div className="flex items-start">
                   <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3">
                     <div className="flex gap-1">
@@ -205,18 +224,7 @@ export function LiveChat() {
                 {quickReplies.map(q => (
                   <button
                     key={q}
-                    onClick={() => {
-                      setInput(q);
-                      setTimeout(() => document.getElementById("chat-input")?.dispatchEvent(new Event("submit", { bubbles: true })), 50);
-                      const userMsg: ChatMsg = { id: Date.now().toString(), text: q, sender: "user" };
-                      setMessages(prev => [...prev, userMsg]);
-                      setIsTyping(true);
-                      setTimeout(() => {
-                        const reply = getBotReply(q, siteContent.contactInfo, siteContent.staffMembers);
-                        setIsTyping(false);
-                        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: reply.text, sender: "bot", link: reply.link }]);
-                      }, 900);
-                    }}
+                    onClick={() => handleQuickReply(q)}
                     className="text-[11px] bg-background border border-border rounded-full px-2.5 py-1 hover:border-primary/50 hover:text-primary transition-colors"
                   >
                     {q}
@@ -226,15 +234,16 @@ export function LiveChat() {
             )}
 
             {/* Input */}
-            <form id="chat-input" onSubmit={handleSend} className="p-3 border-t border-border bg-card flex gap-2 shrink-0">
+            <form onSubmit={handleSend} className="p-3 border-t border-border bg-card flex gap-2 shrink-0">
               <Input
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                placeholder="Mesajınızı yazın..."
+                placeholder={useAI ? "AI asistana sorun..." : "Mesajınızı yazın..."}
                 className="bg-background border-border h-9 text-sm"
                 autoComplete="off"
+                disabled={isTyping}
               />
-              <Button type="submit" size="icon" className="h-9 w-9 shrink-0 bg-primary hover:bg-primary/90">
+              <Button type="submit" size="icon" disabled={isTyping || !input.trim()} className="h-9 w-9 shrink-0 bg-primary hover:bg-primary/90">
                 <Send className="w-4 h-4" />
               </Button>
             </form>

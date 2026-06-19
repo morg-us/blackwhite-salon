@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { StoreProvider } from "@/lib/store";
+import { ClerkProvider } from "@clerk/react";
 
 import { Banner } from "@/components/Banner";
 import { Navigation } from "@/components/Navigation";
@@ -71,13 +72,21 @@ function App() {
     if (lang) document.documentElement.lang = lang;
   }, []);
 
+  const basePath = import.meta.env.BASE_URL ?? "/";
+  const clerkProxyUrl = `${window.location.origin}${basePath}api/__clerk`.replace(/\/+/g, "/").replace(":/", "://");
+
   return (
-    <StoreProvider>
-      <TooltipProvider>
-        <MainApp />
-        <Toaster />
-      </TooltipProvider>
-    </StoreProvider>
+    <ClerkProvider
+      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+      proxyUrl={clerkProxyUrl}
+    >
+      <StoreProvider>
+        <TooltipProvider>
+          <MainApp />
+          <Toaster />
+        </TooltipProvider>
+      </StoreProvider>
+    </ClerkProvider>
   );
 }
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/AuthModal";
 import { ProfileModal } from "@/components/ProfileModal";
 import { UserOrdersModal } from "@/components/UserOrdersModal";
+import { useUser, useClerk } from "@clerk/react";
 
 export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -13,14 +14,18 @@ export function Navigation() {
   const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const {
-    cart, setIsCartOpen,
-    currentUser, setIsAuthModalOpen, logoutUser,
-    setIsProfileModalOpen,
-    siteContent,
-  } = useStore();
+  const { cart, setIsCartOpen, setIsAuthModalOpen, setIsProfileModalOpen, siteContent } = useStore();
+  const { user, isSignedIn } = useUser();
+  const { signOut } = useClerk();
 
   const cartItemsCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  const displayName = user?.fullName ?? user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
+  const displayEmail = user?.emailAddresses?.[0]?.emailAddress ?? "";
+  const avatarUrl = user?.imageUrl;
+  const initials = displayName
+    ? displayName.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)
+    : "?";
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -28,7 +33,6 @@ export function Navigation() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Close user menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
@@ -55,9 +59,11 @@ export function Navigation() {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
-  const initials = currentUser
-    ? currentUser.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
-    : "";
+  const handleLogout = async () => {
+    setIsUserMenuOpen(false);
+    setIsMobileMenuOpen(false);
+    await signOut();
+  };
 
   return (
     <>
@@ -107,22 +113,25 @@ export function Navigation() {
             </button>
 
             {/* Auth */}
-            {currentUser ? (
+            {isSignedIn ? (
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen(v => !v)}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm transition-transform hover:scale-105 ring-2 ring-transparent hover:ring-primary/50"
-                  style={{ backgroundColor: currentUser.avatarColor }}
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm transition-transform hover:scale-105 ring-2 ring-transparent hover:ring-primary/50 overflow-hidden"
+                  style={{ backgroundColor: "#b84d5b" }}
                   data-testid="button-user-menu"
                 >
-                  {initials}
+                  {avatarUrl
+                    ? <img src={avatarUrl} alt={initials} className="w-full h-full object-cover" />
+                    : initials
+                  }
                 </button>
 
                 {isUserMenuOpen && (
                   <div className="absolute right-0 top-12 w-56 bg-card border border-border rounded-xl shadow-xl py-1 z-50">
                     <div className="px-4 py-3 border-b border-border">
-                      <p className="font-semibold text-sm truncate">{currentUser.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{currentUser.email}</p>
+                      <p className="font-semibold text-sm truncate">{displayName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
                     </div>
                     <button
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left"
@@ -145,7 +154,7 @@ export function Navigation() {
                     <div className="border-t border-border mt-1 pt-1">
                       <button
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
-                        onClick={() => { setIsUserMenuOpen(false); logoutUser(); }}
+                        onClick={handleLogout}
                       >
                         <LogOut className="w-4 h-4" /> Çıkış Yap
                       </button>
@@ -180,14 +189,16 @@ export function Navigation() {
               )}
             </button>
 
-            {/* Mobile Avatar or Login */}
-            {currentUser ? (
+            {isSignedIn ? (
               <button
                 onClick={() => setIsMobileMenuOpen(v => !v)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
-                style={{ backgroundColor: currentUser.avatarColor }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs overflow-hidden"
+                style={{ backgroundColor: "#b84d5b" }}
               >
-                {initials}
+                {avatarUrl
+                  ? <img src={avatarUrl} alt={initials} className="w-full h-full object-cover" />
+                  : initials
+                }
               </button>
             ) : (
               <button
@@ -212,7 +223,6 @@ export function Navigation() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 w-full bg-background/98 backdrop-blur-md border-b border-border shadow-xl z-40">
-            {/* Nav Links */}
             <div className="px-4 py-2">
               {navLinks.map(link => (
                 <a
@@ -226,45 +236,32 @@ export function Navigation() {
               ))}
             </div>
 
-            {/* User section in mobile */}
             <div className="border-t border-border px-4 py-3">
-              {currentUser ? (
+              {isSignedIn ? (
                 <>
-                  {/* User info */}
                   <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border/50">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
-                      style={{ backgroundColor: currentUser.avatarColor }}
-                    >
-                      {initials}
+                    <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ backgroundColor: "#b84d5b" }}>
+                      {avatarUrl ? <img src={avatarUrl} alt={initials} className="w-full h-full object-cover" /> : initials}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-sm truncate">{currentUser.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{currentUser.email}</p>
+                      <p className="font-semibold text-sm truncate">{displayName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
                     </div>
                   </div>
-                  <button
-                    className="w-full flex items-center gap-3 py-2.5 text-sm text-foreground hover:text-primary transition-colors"
-                    onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}
-                  >
+                  <button className="w-full flex items-center gap-3 py-2.5 text-sm text-foreground hover:text-primary transition-colors"
+                    onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}>
                     <User className="w-4 h-4 text-primary" /> Profilim
                   </button>
-                  <button
-                    className="w-full flex items-center gap-3 py-2.5 text-sm text-foreground hover:text-primary transition-colors"
-                    onClick={() => { setIsMobileMenuOpen(false); setIsOrdersModalOpen(true); }}
-                  >
+                  <button className="w-full flex items-center gap-3 py-2.5 text-sm text-foreground hover:text-primary transition-colors"
+                    onClick={() => { setIsMobileMenuOpen(false); setIsOrdersModalOpen(true); }}>
                     <Package className="w-4 h-4 text-primary" /> Siparişlerim
                   </button>
-                  <button
-                    className="w-full flex items-center gap-3 py-2.5 text-sm text-foreground hover:text-primary transition-colors"
-                    onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}
-                  >
+                  <button className="w-full flex items-center gap-3 py-2.5 text-sm text-foreground hover:text-primary transition-colors"
+                    onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}>
                     <Settings className="w-4 h-4 text-primary" /> Ayarlar
                   </button>
-                  <button
-                    className="w-full flex items-center gap-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors mt-1"
-                    onClick={() => { setIsMobileMenuOpen(false); logoutUser(); }}
-                  >
+                  <button className="w-full flex items-center gap-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors mt-1"
+                    onClick={handleLogout}>
                     <LogOut className="w-4 h-4" /> Çıkış Yap
                   </button>
                 </>
