@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Component } from "react";
+import type { ReactNode } from "react";
 import { useStore } from "@/lib/store";
 import type { StaffMember, ContactInfo, PriceList, StaffRole } from "@/lib/store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +10,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Instagram, MessageCircle, Clock, Facebook, KeyRound, UserPlus, ShieldCheck } from "lucide-react";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(err: unknown) {
+    return { error: err instanceof Error ? err.message : "Bilinmeyen hata" };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-6 rounded-xl border border-destructive bg-destructive/10 text-destructive text-sm space-y-2">
+          <p className="font-semibold">Bir hata oluştu, sayfa yenileyin</p>
+          <p className="text-xs opacity-75">{this.state.error}</p>
+          <button className="text-xs underline" onClick={() => this.setState({ error: null })}>
+            Tekrar dene
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function useImageInput(onResult: (dataUrl: string) => void) {
   const ref = useRef<HTMLInputElement>(null);
@@ -356,6 +381,7 @@ export function AdminContent() {
 
       {/* ── GALERİ ── */}
       <TabsContent value="gallery" className="space-y-6">
+      <ErrorBoundary>
         <div className="p-5 border border-border rounded-xl bg-background space-y-4">
           <h4 className="font-medium text-sm">Fotoğraf Ekle</h4>
           <div className="flex gap-3 items-start flex-wrap">
@@ -414,9 +440,9 @@ export function AdminContent() {
         </div>
 
         <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4">
-          {siteContent.galleryItems.filter(i => galleryFilter === "all" || i.category === galleryFilter).map(img => (
-            <div key={img.id} className="relative aspect-square rounded-md overflow-hidden group">
-              <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+          {(siteContent.galleryItems ?? []).filter(i => galleryFilter === "all" || i.category === galleryFilter).map(img => (
+            <div key={img.id ?? img.url} className="relative aspect-square rounded-md overflow-hidden group">
+              <img src={img.url} alt={img.label ?? ""} className="w-full h-full object-cover" loading="lazy" />
               <button
                 className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-destructive text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => deleteGalleryItem(img.id)}
@@ -425,7 +451,11 @@ export function AdminContent() {
               </button>
             </div>
           ))}
+          {(siteContent.galleryItems ?? []).length === 0 && (
+            <p className="col-span-full text-xs text-muted-foreground text-center py-8">Henüz fotoğraf eklenmemiş.</p>
+          )}
         </div>
+      </ErrorBoundary>
       </TabsContent>
 
       {/* ── PERSONEL ── */}

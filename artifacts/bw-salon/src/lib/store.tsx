@@ -400,11 +400,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ]);
 
         if (content) {
+          const c = content as SiteContent;
           setSiteContent({
             ...DEFAULT_SITE_CONTENT,
             ...content,
-            priceList: (content as SiteContent).priceList
-              ? { ...DEFAULT_PRICE_LIST, ...(content as SiteContent).priceList }
+            galleryItems: Array.isArray(c.galleryItems) ? c.galleryItems : DEFAULT_SITE_CONTENT.galleryItems,
+            storeProducts: Array.isArray(c.storeProducts) ? c.storeProducts : DEFAULT_SITE_CONTENT.storeProducts,
+            staffMembers: Array.isArray(c.staffMembers) ? c.staffMembers : DEFAULT_SITE_CONTENT.staffMembers,
+            priceList: c.priceList
+              ? { ...DEFAULT_PRICE_LIST, ...c.priceList }
               : DEFAULT_PRICE_LIST,
           });
         }
