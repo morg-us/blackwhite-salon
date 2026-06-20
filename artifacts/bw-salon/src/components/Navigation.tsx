@@ -78,11 +78,22 @@ export function Navigation() {
 
           {/* Logo */}
           <div className="flex items-center gap-2 md:gap-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-primary/50 flex items-center justify-center bg-card overflow-hidden shrink-0">
-              {siteContent.logoImageUrl
-                ? <img src={siteContent.logoImageUrl} alt="Logo" className="w-full h-full object-cover" />
-                : <span className="font-serif font-bold text-sm md:text-lg text-primary">BW</span>
-              }
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-primary/50 flex items-center justify-center bg-card overflow-hidden shrink-0 relative">
+              <span
+                className="font-serif font-bold text-sm md:text-lg text-primary absolute inset-0 flex items-center justify-center transition-opacity duration-500"
+                style={{ opacity: siteContent.logoImageUrl ? 0 : 1 }}
+              >
+                BW
+              </span>
+              {siteContent.logoImageUrl && (
+                <img
+                  key={siteContent.logoImageUrl}
+                  src={siteContent.logoImageUrl}
+                  alt="Logo"
+                  className="w-full h-full object-cover absolute inset-0"
+                  style={{ animation: "fadeInLogo 0.5s ease-in-out" }}
+                />
+              )}
             </div>
             <span className={`font-bold text-base md:text-xl tracking-wider uppercase transition-colors ${isScrolled ? "text-foreground" : "text-white"}`}>
               Black White

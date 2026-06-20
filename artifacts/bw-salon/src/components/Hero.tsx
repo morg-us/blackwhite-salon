@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useT } from "@/lib/translations";
@@ -12,11 +12,19 @@ export function Hero() {
 
   return (
     <section id="hero" className="relative w-full h-[100dvh] -mt-20 flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url('${siteContent.heroImageUrl}')` }}
-      />
+      {/* Background Image — crossfades when URL changes */}
+      <AnimatePresence initial={false}>
+        <motion.div
+          key={siteContent.heroImageUrl}
+          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: siteContent.heroImageUrl ? `url('${siteContent.heroImageUrl}')` : undefined }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.6, ease: "easeInOut" }}
+        />
+      </AnimatePresence>
+
       {/* Dark overlay — always dark regardless of theme */}
       <div className="absolute inset-0 z-0 bg-black/65 bg-gradient-to-t from-black/80 via-black/50 to-black/40" />
 
