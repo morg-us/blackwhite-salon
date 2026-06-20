@@ -237,6 +237,9 @@ importers:
 
   artifacts/bw-salon:
     dependencies:
+      '@clerk/localizations':
+        specifier: ^4.9.1
+        version: 4.9.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@clerk/react':
         specifier: ^6.10.2
         version: 6.10.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -790,6 +793,10 @@ packages:
     peerDependencies:
       express: ^4.17.0 || ^5.0.0
 
+  '@clerk/localizations@4.9.1':
+    resolution: {integrity: sha512-Pnd8hAi1lm+q3X9+SZNcq16pK9lornXyp1EjkGAf6a9f5q2JrJQjeA6jeX43OsflfG4ENsB0nm2Yjlod1c1+XA==}
+    engines: {node: '>=20.9.0'}
+
   '@clerk/react@6.10.2':
     resolution: {integrity: sha512-8f6F+GMhtyrVGxxpqXCdKP16l+EhoNTBI1QD4B6x3U0h2XW6qe7MK8X5X9PFJ27hrSgIjy+M64zhz8j9uXL6fA==}
     engines: {node: '>=20.9.0'}
@@ -799,6 +806,18 @@ packages:
 
   '@clerk/shared@4.19.0':
     resolution: {integrity: sha512-27tZG3/PAuuOQAKFpKGzFlio2FC/t/0TcSRl6UNlYap85BJRPnnYdo3PaVunNbKYKOpaFwJlwgcD2cKB7l/qWw==}
+    engines: {node: '>=20.9.0'}
+    peerDependencies:
+      react: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
+      react-dom: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
+  '@clerk/shared@4.19.1':
+    resolution: {integrity: sha512-0VDUXJ47FRDwPyu61uYTNy7HLMUrDAo7ig8JVqyKWb07ysUw7miXk1MKOsIEQ3Nm0g8lzj13LBv43J7o870GUw==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       react: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
@@ -3467,6 +3486,13 @@ snapshots:
       - react
       - react-dom
 
+  '@clerk/localizations@4.9.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@clerk/shared': 4.19.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+    transitivePeerDependencies:
+      - react
+      - react-dom
+
   '@clerk/react@6.10.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@clerk/shared': 4.19.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -3475,6 +3501,16 @@ snapshots:
       tslib: 2.8.1
 
   '@clerk/shared@4.19.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@tanstack/query-core': 5.100.9
+      dequal: 2.0.3
+      glob-to-regexp: 0.4.1
+      js-cookie: 3.0.7
+    optionalDependencies:
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+
+  '@clerk/shared@4.19.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@tanstack/query-core': 5.100.9
       dequal: 2.0.3

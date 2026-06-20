@@ -119,6 +119,13 @@ const dict = {
     footer_store: "Mağaza",
     footer_contact: "İletişim",
     footer_rights: "© 2025 Black White Güzellik Salonu. Tüm hakları saklıdır.",
+
+    auth_title: "Hesabım",
+    auth_login: "Giriş Yap",
+    auth_register: "Kayıt Ol",
+    auth_login_desc: "Hesabınıza giriş yapın.",
+    auth_register_desc: "Yeni bir hesap oluşturun.",
+    auth_terms: "Giriş yaparak gizlilik politikamızı ve kullanım şartlarını kabul etmiş olursunuz.",
   },
   en: {
     nav_home: "Home",
@@ -236,6 +243,13 @@ const dict = {
     footer_store: "Store",
     footer_contact: "Contact",
     footer_rights: "© 2025 Black White Beauty Salon. All rights reserved.",
+
+    auth_title: "My Account",
+    auth_login: "Sign In",
+    auth_register: "Register",
+    auth_login_desc: "Sign in to your account.",
+    auth_register_desc: "Create a new account.",
+    auth_terms: "By signing in, you agree to our privacy policy and terms of use.",
   },
   ru: {
     nav_home: "Главная",
@@ -353,6 +367,13 @@ const dict = {
     footer_store: "Магазин",
     footer_contact: "Контакты",
     footer_rights: "© 2025 Black White Салон красоты. Все права защищены.",
+
+    auth_title: "Мой аккаунт",
+    auth_login: "Войти",
+    auth_register: "Регистрация",
+    auth_login_desc: "Войдите в свой аккаунт.",
+    auth_register_desc: "Создайте новый аккаунт.",
+    auth_terms: "Войдя в систему, вы соглашаетесь с нашей политикой конфиденциальности и условиями использования.",
   },
 } as const;
 

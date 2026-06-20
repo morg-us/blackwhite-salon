@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { StoreProvider } from "@/lib/store";
 import { ClerkProvider } from "@clerk/react";
+import { trTR, enUS, ruRU } from "@clerk/localizations";
 
 import { Banner } from "@/components/Banner";
 import { Navigation } from "@/components/Navigation";
@@ -81,9 +82,13 @@ function App() {
     ? undefined
     : `${window.location.origin}${basePath}api/__clerk`.replace(/\/+/g, "/").replace(":/", "://");
 
+  const lang = localStorage.getItem("bw_language") ?? "tr";
+  const clerkLocalization = lang === "en" ? enUS : lang === "ru" ? ruRU : trTR;
+
   return (
     <ClerkProvider
       publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+      localization={clerkLocalization}
       {...(clerkProxyUrl ? { proxyUrl: clerkProxyUrl } : {})}
     >
       <StoreProvider>
