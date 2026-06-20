@@ -2,19 +2,21 @@ import { motion } from "framer-motion";
 import { Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useStore } from "@/lib/store";
+import { useT } from "@/lib/translations";
 
 export function Staff() {
   const { siteContent } = useStore();
+  const t = useT();
   const staffList = siteContent.staffMembers;
 
   return (
     <section id="staff" className="py-24 bg-background">
       <div className="container px-4 mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif">Uzman Kadromuz</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif">{t("staff_title")}</h2>
           <div className="h-1 w-20 bg-primary mx-auto mb-6"></div>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Alanında uzman, yenilikleri takip eden ve size en iyi hizmeti sunmak için sürekli kendini geliştiren profesyonel ekibimiz.
+            {t("staff_subtitle")}
           </p>
         </div>
 
@@ -30,7 +32,7 @@ export function Staff() {
               data-testid={`card-staff-${staff.id}`}
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              
+
               <Avatar className="w-24 h-24 mb-6 border-2 border-primary/20 ring-4 ring-background">
                 {staff.imageUrl ? (
                   <AvatarImage src={staff.imageUrl} alt={staff.name} className="object-cover" />

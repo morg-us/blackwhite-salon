@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useT } from "@/lib/translations";
 
 function StarRating({ value, onChange }: { value: number; onChange?: (v: number) => void }) {
   const [hovered, setHovered] = useState(0);
@@ -36,15 +37,15 @@ function StarRating({ value, onChange }: { value: number; onChange?: (v: number)
 export function Reviews() {
   const { reviews, addReview, deleteReview, currentUser, setIsAuthModalOpen, siteContent } = useStore();
   const { toast } = useToast();
+  const t = useT();
 
   const [rating, setRating] = useState(5);
   const [text, setText] = useState("");
-  const [staffMember, setStaffMember] = useState("Genel");
+  const [staffMember, setStaffMember] = useState(t("reviews_general"));
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const allReviews = [
-    // Seed reviews (static) shown when no real reviews exist yet
     ...(!reviews.length ? [
       { id: "seed1", userId: "seed", userName: "Ayşe K.", avatarColor: "#b84d5b", rating: 5, text: "Gülcan hanım saçlarımı tam hayalimde olduğu gibi yaptı. Kesinlikle tavsiye ederim!", staffMember: "Genel", date: "2025-03-12T10:00:00" },
       { id: "seed2", userId: "seed", userName: "Fatma S.", avatarColor: "#bd8c74", rating: 5, text: "Düğün makyajım için Buse hanımı tercih ettim, sonuç muhteşemdi!", staffMember: "Genel", date: "2025-04-20T14:00:00" },
@@ -55,7 +56,7 @@ export function Reviews() {
 
   const handleSubmit = () => {
     if (!text.trim()) {
-      toast({ title: "Lütfen yorum yazın", variant: "destructive" });
+      toast({ title: t("reviews_write_first"), variant: "destructive" });
       return;
     }
     if (!currentUser) return;
@@ -71,10 +72,10 @@ export function Reviews() {
       });
       setText("");
       setRating(5);
-      setStaffMember("Genel");
+      setStaffMember(t("reviews_general"));
       setShowForm(false);
       setSubmitting(false);
-      toast({ title: "Yorumunuz yayınlandı!", description: "Değerli görüşünüz için teşekkür ederiz." });
+      toast({ title: t("reviews_published"), description: t("reviews_thanks") });
     }, 600);
   };
 
@@ -85,9 +86,8 @@ export function Reviews() {
   return (
     <section id="reviews" className="py-16 md:py-24 bg-card/30">
       <div className="container px-4 mx-auto max-w-5xl">
-        {/* Header */}
         <div className="text-center mb-10 md:mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif">Müşteri Yorumları</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif">{t("reviews_title")}</h2>
           <div className="h-1 w-20 bg-primary mx-auto mb-6"></div>
           <div className="flex items-center justify-center gap-3">
             <div className="flex gap-1">
@@ -96,11 +96,10 @@ export function Reviews() {
               ))}
             </div>
             <span className="text-2xl font-bold">{avgRating}</span>
-            <span className="text-muted-foreground text-sm">({allReviews.length} yorum)</span>
+            <span className="text-muted-foreground text-sm">({allReviews.length} {t("reviews_count")})</span>
           </div>
         </div>
 
-        {/* Write review CTA */}
         <div className="mb-8 text-center">
           {currentUser ? (
             <Button
@@ -108,7 +107,7 @@ export function Reviews() {
               className="gap-2 bg-primary/90 hover:bg-primary text-white"
             >
               <MessageSquare className="w-4 h-4" />
-              {showForm ? "İptal" : "Yorum Yaz"}
+              {showForm ? t("reviews_cancel") : t("reviews_write")}
             </Button>
           ) : (
             <Button
@@ -117,20 +116,19 @@ export function Reviews() {
               className="gap-2 border-primary/40 text-primary hover:bg-primary/10"
             >
               <LogIn className="w-4 h-4" />
-              Yorum yazmak için giriş yapın
+              {t("reviews_login")}
             </Button>
           )}
         </div>
 
-        {/* Review form */}
         {showForm && currentUser && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8 bg-card border border-border rounded-2xl p-5 md:p-6 max-w-2xl mx-auto"
           >
-            <h3 className="font-semibold mb-4 text-sm text-muted-foreground uppercase tracking-wider">Deneyiminizi Paylaşın</h3>
-            
+            <h3 className="font-semibold mb-4 text-sm text-muted-foreground uppercase tracking-wider">{t("reviews_share")}</h3>
+
             <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border/50">
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
@@ -146,13 +144,13 @@ export function Reviews() {
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Uzman (isteğe bağlı)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t("reviews_expert")}</label>
                 <Select value={staffMember} onValueChange={setStaffMember}>
                   <SelectTrigger className="bg-background border-border h-9 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Genel">Genel</SelectItem>
+                    <SelectItem value={t("reviews_general")}>{t("reviews_general")}</SelectItem>
                     {siteContent.staffMembers.map(s => (
                       <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
                     ))}
@@ -162,7 +160,7 @@ export function Reviews() {
               <Textarea
                 value={text}
                 onChange={e => setText(e.target.value)}
-                placeholder="Deneyiminizi paylaşın..."
+                placeholder={t("reviews_placeholder")}
                 className="bg-background border-border resize-none h-24 text-sm"
                 maxLength={500}
               />
@@ -174,14 +172,13 @@ export function Reviews() {
                   size="sm"
                   className="bg-[#b84d5b] hover:bg-[#b84d5b]/90 text-white"
                 >
-                  {submitting ? "Gönderiliyor..." : "Yorumu Gönder"}
+                  {submitting ? t("reviews_sending") : t("reviews_send")}
                 </Button>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Reviews grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {allReviews.slice().reverse().map((review, i) => (
             <motion.div
@@ -192,12 +189,11 @@ export function Reviews() {
               transition={{ delay: Math.min(i * 0.08, 0.4), duration: 0.4 }}
               className="bg-background p-5 md:p-6 rounded-2xl border border-border flex flex-col gap-3 relative group"
             >
-              {/* Delete button (only for own reviews) */}
               {currentUser && review.userId === currentUser.id && (
                 <button
                   onClick={() => deleteReview(review.id)}
                   className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-destructive/10 text-destructive"
-                  title="Yorumu sil"
+                  title={t("reviews_delete")}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

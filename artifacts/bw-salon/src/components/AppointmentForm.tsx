@@ -8,6 +8,7 @@ import { tr } from "date-fns/locale";
 
 import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/lib/store";
+import { useT } from "@/lib/translations";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -15,21 +16,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
-const formSchema = z.object({
-  name: z.string().min(2, { message: "Ad soyad en az 2 karakter olmalıdır." }),
-  phone: z.string().min(10, { message: "Geçerli bir telefon numarası giriniz." }),
-  category: z.string().min(1, { message: "Kategori seçiniz." }),
-  staff: z.string().min(1, { message: "Uzman seçiniz." }),
-  date: z.date({ required_error: "Tarih seçiniz." }),
-  time: z.string().min(1, { message: "Saat seçiniz." }),
-});
-
 const timeSlots = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
 
 export function AppointmentForm() {
   const { toast } = useToast();
   const { addAppointment, siteContent, currentUser } = useStore();
+  const t = useT();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const formSchema = z.object({
+    name: z.string().min(2),
+    phone: z.string().min(10),
+    category: z.string().min(1),
+    staff: z.string().min(1),
+    date: z.date({ required_error: t("appointment_date_ph") }),
+    time: z.string().min(1),
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -58,8 +60,8 @@ export function AppointmentForm() {
     }
     form.reset({ name: currentUser?.name ?? "", phone: "", category: "", staff: "", time: "" });
     toast({
-      title: "Randevu Alındı ✓",
-      description: "Randevunuz başarıyla oluşturuldu. Sizi bekliyoruz!",
+      title: t("appointment_success"),
+      description: t("appointment_success_desc"),
     });
   }
 
@@ -67,9 +69,9 @@ export function AppointmentForm() {
     <section id="appointment" className="py-16 md:py-24 bg-card/50">
       <div className="container px-4 max-w-4xl mx-auto">
         <div className="text-center mb-10 md:mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif text-primary-foreground">Hızlı Randevu</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif text-primary-foreground">{t("appointment_quick")}</h2>
           <div className="h-1 w-20 bg-primary mx-auto mb-6"></div>
-          <p className="text-muted-foreground text-sm md:text-base">Size en uygun zamanı seçerek hemen randevunuzu oluşturun.</p>
+          <p className="text-muted-foreground text-sm md:text-base">{t("appointment_subtitle")}</p>
         </div>
 
         <div className="bg-card p-5 md:p-8 rounded-xl border border-border shadow-lg">
@@ -81,7 +83,7 @@ export function AppointmentForm() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Ad Soyad</FormLabel>
+                      <FormLabel>{t("appointment_name")}</FormLabel>
                       <FormControl>
                         <Input placeholder="Örn: Ayşe Yılmaz" {...field} className="bg-background border-border" data-testid="input-name" />
                       </FormControl>
@@ -89,13 +91,13 @@ export function AppointmentForm() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Telefon</FormLabel>
+                      <FormLabel>{t("appointment_phone")}</FormLabel>
                       <FormControl>
                         <Input type="tel" placeholder="05xx xxx xx xx" {...field} className="bg-background border-border" data-testid="input-phone" />
                       </FormControl>
@@ -109,20 +111,20 @@ export function AppointmentForm() {
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Hizmet Kategorisi</FormLabel>
+                      <FormLabel>{t("appointment_category")}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="bg-background border-border" data-testid="select-category">
-                            <SelectValue placeholder="Hizmet seçin" />
+                            <SelectValue placeholder={t("appointment_category_ph")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="sac">Saç</SelectItem>
-                          <SelectItem value="makyaj">Makyaj</SelectItem>
-                          <SelectItem value="gelin">Gelin Paketi</SelectItem>
-                          <SelectItem value="manikur">Manikür & Pedikür</SelectItem>
-                          <SelectItem value="agda">Ağda</SelectItem>
-                          <SelectItem value="cilt">Cilt Bakımı</SelectItem>
+                          <SelectItem value="sac">{t("appointment_cat_sac")}</SelectItem>
+                          <SelectItem value="makyaj">{t("appointment_cat_makyaj")}</SelectItem>
+                          <SelectItem value="gelin">{t("appointment_cat_gelin")}</SelectItem>
+                          <SelectItem value="manikur">{t("appointment_cat_manikur")}</SelectItem>
+                          <SelectItem value="agda">{t("appointment_cat_agda")}</SelectItem>
+                          <SelectItem value="cilt">{t("appointment_cat_cilt")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -130,17 +132,16 @@ export function AppointmentForm() {
                   )}
                 />
 
-                {/* Dynamic staff list from admin panel */}
                 <FormField
                   control={form.control}
                   name="staff"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Uzman Seçimi</FormLabel>
+                      <FormLabel>{t("appointment_staff")}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="bg-background border-border" data-testid="select-staff">
-                            <SelectValue placeholder="Uzman seçin" />
+                            <SelectValue placeholder={t("appointment_staff_ph")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -149,7 +150,7 @@ export function AppointmentForm() {
                               {s.name} — {s.title}
                             </SelectItem>
                           ))}
-                          <SelectItem value="Farketmez">Farketmez</SelectItem>
+                          <SelectItem value="Farketmez">{t("appointment_nocare")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -162,7 +163,7 @@ export function AppointmentForm() {
                   name="date"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Tarih</FormLabel>
+                      <FormLabel>{t("appointment_date")}</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -171,7 +172,7 @@ export function AppointmentForm() {
                               className={`w-full pl-3 text-left font-normal bg-background border-border hover:bg-background/80 ${!field.value && "text-muted-foreground"}`}
                               data-testid="button-date"
                             >
-                              {field.value ? format(field.value, "PPP", { locale: tr }) : <span>Tarih seçin</span>}
+                              {field.value ? format(field.value, "PPP", { locale: tr }) : <span>{t("appointment_date_ph")}</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -196,11 +197,11 @@ export function AppointmentForm() {
                   name="time"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Saat</FormLabel>
+                      <FormLabel>{t("appointment_time")}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="bg-background border-border" data-testid="select-time">
-                            <SelectValue placeholder="Saat seçin" />
+                            <SelectValue placeholder={t("appointment_time_ph")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -223,7 +224,7 @@ export function AppointmentForm() {
                   className="w-full md:w-auto min-w-[220px] bg-primary hover:bg-primary/90 text-primary-foreground"
                   data-testid="button-submit-appointment"
                 >
-                  {isSubmitting ? "İşleniyor..." : "Randevuyu Onayla"}
+                  {isSubmitting ? t("appointment_processing") : t("appointment_confirm")}
                 </Button>
               </div>
             </form>

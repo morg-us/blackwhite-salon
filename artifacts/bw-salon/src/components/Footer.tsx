@@ -1,8 +1,10 @@
 import { Instagram, Facebook, MessageCircle } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useT } from "@/lib/translations";
 
 export function Footer() {
   const { siteContent } = useStore();
+  const t = useT();
   const ci = siteContent.contactInfo;
 
   const handleLogoClick = (e: React.MouseEvent) => {
@@ -39,14 +41,14 @@ export function Footer() {
 
           <div className="flex gap-8 text-sm">
             <div className="flex flex-col gap-2">
-              <a href="#hero" className="text-muted-foreground hover:text-primary transition-colors">Anasayfa</a>
-              <a href="#staff" className="text-muted-foreground hover:text-primary transition-colors">Hakkımızda</a>
-              <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors">Fiyat Listesi</a>
+              <a href="#hero" className="text-muted-foreground hover:text-primary transition-colors">{t("footer_home")}</a>
+              <a href="#staff" className="text-muted-foreground hover:text-primary transition-colors">{t("footer_about")}</a>
+              <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors">{t("footer_pricing")}</a>
             </div>
             <div className="flex flex-col gap-2">
-              <a href="#gallery" className="text-muted-foreground hover:text-primary transition-colors">Koleksiyon</a>
-              <a href="#store" className="text-muted-foreground hover:text-primary transition-colors">Mağaza</a>
-              <a href="#contact" className="text-muted-foreground hover:text-primary transition-colors">İletişim</a>
+              <a href="#gallery" className="text-muted-foreground hover:text-primary transition-colors">{t("footer_gallery")}</a>
+              <a href="#store" className="text-muted-foreground hover:text-primary transition-colors">{t("footer_store")}</a>
+              <a href="#contact" className="text-muted-foreground hover:text-primary transition-colors">{t("footer_contact")}</a>
             </div>
           </div>
 
@@ -89,7 +91,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-border mt-12 pt-8 text-center text-xs text-muted-foreground flex flex-col md:flex-row justify-between items-center gap-4">
-          <p>© 2025 Black White Güzellik Salonu. Tüm hakları saklıdır.</p>
+          <p>{t("footer_rights")}</p>
           <p className="font-serif italic">Tasarım & Yazılım</p>
         </div>
       </div>
