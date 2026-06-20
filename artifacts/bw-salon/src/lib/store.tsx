@@ -378,7 +378,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = l;
   };
 
-  const [siteContent, setSiteContent] = useState<SiteContent>(DEFAULT_SITE_CONTENT);
+  const [siteContent, setSiteContent] = useState<SiteContent>(() => {
+    try {
+      const cached = localStorage.getItem("bw_site_content");
+      if (cached) {
+        const parsed = JSON.parse(cached) as SiteContent;
+        return {
+          ...DEFAULT_SITE_CONTENT,
+          ...parsed,
+          galleryItems: Array.isArray(parsed.galleryItems) ? parsed.galleryItems : DEFAULT_SITE_CONTENT.galleryItems,
+          storeProducts: Array.isArray(parsed.storeProducts) ? parsed.storeProducts : DEFAULT_SITE_CONTENT.storeProducts,
+          staffMembers: Array.isArray(parsed.staffMembers) ? parsed.staffMembers : DEFAULT_SITE_CONTENT.staffMembers,
+          priceList: parsed.priceList ? { ...DEFAULT_PRICE_LIST, ...parsed.priceList } : DEFAULT_PRICE_LIST,
+        };
+      }
+    } catch { /* empty */ }
+    return DEFAULT_SITE_CONTENT;
+  });
   const siteContentLoaded = useRef(false);
   const siteContentDirty = useRef(false);
 
@@ -402,7 +418,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         if (content) {
           const c = content as SiteContent;
-          setSiteContent({
+          const merged: SiteContent = {
             ...DEFAULT_SITE_CONTENT,
             ...content,
             galleryItems: Array.isArray(c.galleryItems) ? c.galleryItems : DEFAULT_SITE_CONTENT.galleryItems,
@@ -411,7 +427,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             priceList: c.priceList
               ? { ...DEFAULT_PRICE_LIST, ...c.priceList }
               : DEFAULT_PRICE_LIST,
-          });
+          };
+          setSiteContent(merged);
+          try { localStorage.setItem("bw_site_content", JSON.stringify(merged)); } catch { /* empty */ }
         }
         siteContentLoaded.current = true;
 
@@ -503,11 +521,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     else sessionStorage.removeItem("bw_current_staff_id");
   }, [currentStaffUser]);
 
-  // ── Sync siteContent to API whenever it changes ───────────
+  // ── Sync siteContent to localStorage + API whenever it changes ───
   useEffect(() => {
     if (!siteContentLoaded.current) return;
     if (!siteContentDirty.current) { siteContentDirty.current = true; return; }
-    api("/site-content", { method: "PUT", body: JSON.stringify(siteContent) }).catch(console.error);
+    const json = JSON.stringify(siteContent);
+    try { localStorage.setItem("bw_site_content", json); } catch { /* empty */ }
+    api("/site-content", { method: "PUT", body: json }).catch(console.error);
   }, [siteContent]);
 
   // ── Appointments ──────────────────────────────────────────
