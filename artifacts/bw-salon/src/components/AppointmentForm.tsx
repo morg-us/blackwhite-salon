@@ -69,7 +69,7 @@ export function AppointmentForm() {
     <section id="appointment" className="py-16 md:py-24 bg-card/50">
       <div className="container px-4 max-w-4xl mx-auto">
         <div className="text-center mb-10 md:mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif text-primary-foreground">{t("appointment_quick")}</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif text-foreground">{t("appointment_quick")}</h2>
           <div className="h-1 w-20 bg-primary mx-auto mb-6"></div>
           <p className="text-muted-foreground text-sm md:text-base">{t("appointment_subtitle")}</p>
         </div>
