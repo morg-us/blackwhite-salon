@@ -2,20 +2,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
 import type { PriceList } from "@/lib/store";
-import { useT, type TranslationKey } from "@/lib/translations";
-
-const CATEGORY_KEYS: Record<keyof PriceList, TranslationKey> = {
-  sac: "pricing_cat_sac",
-  makyaj: "pricing_cat_makyaj",
-  gelin: "pricing_cat_gelin",
-  manikur: "pricing_cat_manikur",
-  agda: "pricing_cat_agda",
-};
+import { useT } from "@/lib/translations";
 
 export function Pricing() {
   const { siteContent } = useStore();
   const t = useT();
   const priceList = siteContent.priceList;
+  const apptCategories = siteContent.appointmentSettings.categories;
+
+  const getCategoryLabel = (key: keyof PriceList): string => {
+    const found = apptCategories.find(c => c.key === key);
+    if (found) return found.label;
+    const fallbacks: Record<string, string> = {
+      sac: "Saç",
+      makyaj: "Makyaj",
+      gelin: "Gelin",
+      manikur: "Manikür",
+      agda: "Ağda",
+    };
+    return fallbacks[key] ?? key;
+  };
+
+  const priceListKeys = Object.keys(priceList) as (keyof PriceList)[];
 
   return (
     <section id="pricing" className="py-24 bg-background">
@@ -26,20 +34,20 @@ export function Pricing() {
           <p className="text-muted-foreground">{t("pricing_subtitle")}</p>
         </div>
 
-        <Tabs defaultValue="sac" className="w-full">
+        <Tabs defaultValue={priceListKeys[0]} className="w-full">
           <TabsList className="w-full flex flex-wrap h-auto bg-transparent mb-8 justify-center gap-2">
-            {(Object.keys(CATEGORY_KEYS) as (keyof PriceList)[]).map(cat => (
+            {priceListKeys.map(cat => (
               <TabsTrigger
                 key={cat}
                 value={cat}
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full px-6 py-2"
               >
-                {t(CATEGORY_KEYS[cat])}
+                {getCategoryLabel(cat)}
               </TabsTrigger>
             ))}
           </TabsList>
 
-          {(Object.keys(priceList) as (keyof PriceList)[]).map(category => (
+          {priceListKeys.map(category => (
             <TabsContent key={category} value={category} className="mt-4">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}

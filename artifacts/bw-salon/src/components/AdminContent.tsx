@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, Component } from "react";
 import type { ReactNode } from "react";
 import { useStore } from "@/lib/store";
-import type { StaffMember, ContactInfo, PriceList, StaffRole } from "@/lib/store";
+import type { StaffMember, ContactInfo, PriceList, StaffRole, AppointmentSettings, AppointmentCategory } from "@/lib/store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Instagram, MessageCircle, Clock, Facebook, KeyRound, UserPlus, ShieldCheck, MessageSquare, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Instagram, MessageCircle, Clock, Facebook, KeyRound, UserPlus, ShieldCheck, MessageSquare, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, GripVertical, CalendarCheck } from "lucide-react";
 
 type SmsNotification = {
   id: number;
@@ -311,6 +311,63 @@ export function AdminContent() {
     toast({ title: "Başarılı", description: "İletişim bilgileri güncellendi." });
   };
 
+  // ── APPOINTMENT SETTINGS ──
+  const [apptForm, setApptForm] = useState<AppointmentSettings>({ ...siteContent.appointmentSettings });
+  const [newTimeSlot, setNewTimeSlot] = useState("");
+  const [newCategory, setNewCategory] = useState({ key: "", label: "" });
+  const [editingCatIndex, setEditingCatIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isLoaded) {
+      setContactForm({ ...siteContent.contactInfo });
+      setApptForm({ ...siteContent.appointmentSettings });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
+
+  const saveApptSettings = () => {
+    updateSiteContent({ appointmentSettings: apptForm });
+    toast({ title: "Başarılı", description: "Randevu formu güncellendi." });
+  };
+
+  const addTimeSlot = () => {
+    const slot = newTimeSlot.trim();
+    if (!slot || apptForm.timeSlots.includes(slot)) return;
+    const sorted = [...apptForm.timeSlots, slot].sort();
+    setApptForm(f => ({ ...f, timeSlots: sorted }));
+    setNewTimeSlot("");
+  };
+
+  const removeTimeSlot = (slot: string) => {
+    setApptForm(f => ({ ...f, timeSlots: f.timeSlots.filter(s => s !== slot) }));
+  };
+
+  const toggleCategory = (index: number) => {
+    setApptForm(f => ({
+      ...f,
+      categories: f.categories.map((c, i) => i === index ? { ...c, enabled: !c.enabled } : c),
+    }));
+  };
+
+  const updateCategoryLabel = (index: number, label: string) => {
+    setApptForm(f => ({
+      ...f,
+      categories: f.categories.map((c, i) => i === index ? { ...c, label } : c),
+    }));
+  };
+
+  const addCategory = () => {
+    const key = newCategory.key.trim().toLowerCase().replace(/\s+/g, "_");
+    const label = newCategory.label.trim();
+    if (!key || !label || apptForm.categories.some(c => c.key === key)) return;
+    setApptForm(f => ({ ...f, categories: [...f.categories, { key, label, enabled: true }] }));
+    setNewCategory({ key: "", label: "" });
+  };
+
+  const removeCategory = (index: number) => {
+    setApptForm(f => ({ ...f, categories: f.categories.filter((_, i) => i !== index) }));
+  };
+
   const [staffForm, setStaffForm] = useState<Omit<StaffMember, "id"> & { id?: string; tagsInput: string }>({
     ...EMPTY_STAFF,
     tagsInput: "",
@@ -350,6 +407,7 @@ export function AdminContent() {
         <TabsTrigger value="gallery" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Galeri</TabsTrigger>
         <TabsTrigger value="staff" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Personel</TabsTrigger>
         <TabsTrigger value="prices" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Fiyat Listesi</TabsTrigger>
+        <TabsTrigger value="appointment" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">📅 Randevu Formu</TabsTrigger>
         <TabsTrigger value="accounts" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Personel Hesapları</TabsTrigger>
         <TabsTrigger value="contact" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">İletişim</TabsTrigger>
         <TabsTrigger value="sms" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">📱 SMS Geçmişi</TabsTrigger>
@@ -688,6 +746,162 @@ export function AdminContent() {
               <Plus className="w-4 h-4" /> Ekle
             </Button>
           </div>
+        </div>
+      </TabsContent>
+
+      {/* ── RANDEVU FORMU ── */}
+      <TabsContent value="appointment" className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="font-semibold text-lg flex items-center gap-2"><CalendarCheck className="w-5 h-5 text-primary" /> Hızlı Randevu Formu</h3>
+            <p className="text-xs text-muted-foreground mt-1">Müşteri panelindeki randevu bölümünü buradan özelleştirin.</p>
+          </div>
+          <Button onClick={saveApptSettings} className="bg-[#b84d5b] text-white hover:bg-[#b84d5b]/90">Kaydet</Button>
+        </div>
+
+        {/* Başlık & Alt Başlık */}
+        <div className="p-5 border border-border rounded-xl bg-background space-y-4">
+          <h4 className="font-medium text-sm">Bölüm Başlığı</h4>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Başlık</label>
+              <Input
+                placeholder="Hızlı Randevu"
+                value={apptForm.title}
+                onChange={e => setApptForm(f => ({ ...f, title: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Alt başlık</label>
+              <Input
+                placeholder="Birkaç adımda online randevu alın..."
+                value={apptForm.subtitle}
+                onChange={e => setApptForm(f => ({ ...f, subtitle: e.target.value }))}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Hizmet Kategorileri */}
+        <div className="p-5 border border-border rounded-xl bg-background space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium text-sm">Hizmet Kategorileri</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">Randevu formunda görünecek kategorileri düzenleyin. Fiyat listenizdeki kategoriler burada yansır.</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {apptForm.categories.map((cat: AppointmentCategory, i: number) => (
+              <div key={cat.key} className={`flex items-center gap-3 p-3 border rounded-xl transition-all ${cat.enabled ? "border-border bg-background" : "border-border/40 bg-muted/30 opacity-60"}`}>
+                <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  {editingCatIndex === i ? (
+                    <Input
+                      autoFocus
+                      className="h-7 text-sm"
+                      value={cat.label}
+                      onChange={e => updateCategoryLabel(i, e.target.value)}
+                      onBlur={() => setEditingCatIndex(null)}
+                      onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") setEditingCatIndex(null); }}
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium truncate">{cat.label}</span>
+                      <span className="text-[10px] text-muted-foreground/60 bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">{cat.key}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    title="Adı düzenle"
+                    onClick={() => setEditingCatIndex(editingCatIndex === i ? null : i)}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    title={cat.enabled ? "Gizle" : "Göster"}
+                    onClick={() => toggleCategory(i)}
+                  >
+                    {cat.enabled ? <Eye className="w-3.5 h-3.5 text-primary" /> : <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                    title="Sil"
+                    onClick={() => removeCategory(i)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-4 border border-dashed border-border rounded-xl bg-background space-y-3">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Yeni Kategori Ekle</p>
+            <div className="flex gap-2 flex-wrap">
+              <Input
+                className="flex-1 min-w-[140px]"
+                placeholder="Anahtar (örn: kirpik)"
+                value={newCategory.key}
+                onChange={e => setNewCategory(p => ({ ...p, key: e.target.value }))}
+              />
+              <Input
+                className="flex-1 min-w-[180px]"
+                placeholder="Görünen Ad (örn: Kirpik & Kaş)"
+                value={newCategory.label}
+                onChange={e => setNewCategory(p => ({ ...p, label: e.target.value }))}
+              />
+              <Button onClick={addCategory} className="gap-2 bg-[#b84d5b] text-white">
+                <Plus className="w-4 h-4" /> Ekle
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Saat Dilimleri */}
+        <div className="p-5 border border-border rounded-xl bg-background space-y-4">
+          <h4 className="font-medium text-sm">Randevu Saatleri</h4>
+          <div className="flex flex-wrap gap-2">
+            {apptForm.timeSlots.map(slot => (
+              <div key={slot} className="flex items-center gap-1 bg-muted border border-border rounded-lg px-3 py-1.5 text-sm">
+                <span className="font-mono">{slot}</span>
+                <button
+                  onClick={() => removeTimeSlot(slot)}
+                  className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                  title="Sil"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              className="w-32 font-mono"
+              placeholder="09:00"
+              value={newTimeSlot}
+              onChange={e => setNewTimeSlot(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") addTimeSlot(); }}
+            />
+            <Button onClick={addTimeSlot} variant="outline" className="gap-2">
+              <Plus className="w-4 h-4" /> Saat Ekle
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Saatler otomatik sıralanır. Format: SS:DD (örn: 09:00, 14:30)</p>
+        </div>
+
+        <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl text-xs text-muted-foreground">
+          <p className="font-medium text-foreground mb-1">💡 Entegrasyon Bilgisi</p>
+          <p>Buradaki kategoriler müşterinin randevu formunda görünür. <strong>Fiyat Listesi</strong> sekmesinde oluşturduğunuz kategorilere ait fiyatlar, randevu onaylandıktan sonra personel panelinde görüntülenebilir. Kaydet butonuna tıklamayı unutmayın.</p>
         </div>
       </TabsContent>
 

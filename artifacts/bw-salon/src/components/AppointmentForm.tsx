@@ -16,13 +16,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
-const timeSlots = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
-
 export function AppointmentForm() {
   const { toast } = useToast();
   const { addAppointment, siteContent, currentUser } = useStore();
   const t = useT();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const apptSettings = siteContent.appointmentSettings;
+  const enabledCategories = apptSettings.categories.filter(c => c.enabled);
 
   const formSchema = z.object({
     name: z.string().min(2),
@@ -70,9 +71,13 @@ export function AppointmentForm() {
     <section id="appointment" className="py-16 md:py-24 bg-card/50">
       <div className="container px-4 max-w-4xl mx-auto">
         <div className="text-center mb-10 md:mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif text-foreground">{t("appointment_quick")}</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif text-foreground">
+            {apptSettings.title || t("appointment_quick")}
+          </h2>
           <div className="h-1 w-20 bg-primary mx-auto mb-6"></div>
-          <p className="text-muted-foreground text-sm md:text-base">{t("appointment_subtitle")}</p>
+          <p className="text-muted-foreground text-sm md:text-base">
+            {apptSettings.subtitle || t("appointment_subtitle")}
+          </p>
         </div>
 
         <div className="bg-card p-5 md:p-8 rounded-xl border border-border shadow-lg">
@@ -120,12 +125,11 @@ export function AppointmentForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="sac">{t("appointment_cat_sac")}</SelectItem>
-                          <SelectItem value="makyaj">{t("appointment_cat_makyaj")}</SelectItem>
-                          <SelectItem value="gelin">{t("appointment_cat_gelin")}</SelectItem>
-                          <SelectItem value="manikur">{t("appointment_cat_manikur")}</SelectItem>
-                          <SelectItem value="agda">{t("appointment_cat_agda")}</SelectItem>
-                          <SelectItem value="cilt">{t("appointment_cat_cilt")}</SelectItem>
+                          {enabledCategories.map(cat => (
+                            <SelectItem key={cat.key} value={cat.key}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -206,7 +210,7 @@ export function AppointmentForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {timeSlots.map(time => (
+                          {apptSettings.timeSlots.map(time => (
                             <SelectItem key={time} value={time}>{time}</SelectItem>
                           ))}
                         </SelectContent>

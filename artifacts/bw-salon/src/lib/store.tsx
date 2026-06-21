@@ -162,6 +162,19 @@ export type PriceList = {
   makyaj: PriceItem[];
 };
 
+export type AppointmentCategory = {
+  key: string;
+  label: string;
+  enabled: boolean;
+};
+
+export type AppointmentSettings = {
+  title: string;
+  subtitle: string;
+  timeSlots: string[];
+  categories: AppointmentCategory[];
+};
+
 export type SiteContent = {
   heroImageUrl: string;
   logoImageUrl: string;
@@ -170,6 +183,7 @@ export type SiteContent = {
   staffMembers: StaffMember[];
   contactInfo: ContactInfo;
   priceList: PriceList;
+  appointmentSettings: AppointmentSettings;
 };
 
 const DEFAULT_PRICE_LIST: PriceList = {
@@ -198,6 +212,20 @@ const DEFAULT_PRICE_LIST: PriceList = {
   makyaj: [
     { name: "Günlük Makyaj", price: "1.000 TL" },
     { name: "Gece Makyajı", price: "1.500 TL" },
+  ],
+};
+
+const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
+  title: "Hızlı Randevu",
+  subtitle: "Birkaç adımda online randevu alın, sizi bekliyoruz.",
+  timeSlots: ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"],
+  categories: [
+    { key: "sac", label: "Saç Bakım & Kesim", enabled: true },
+    { key: "makyaj", label: "Makyaj", enabled: true },
+    { key: "gelin", label: "Gelin & Nişan Paketi", enabled: true },
+    { key: "manikur", label: "Manikür & Pedikür", enabled: true },
+    { key: "agda", label: "Ağda & Epilasyon", enabled: true },
+    { key: "cilt", label: "Cilt Bakım", enabled: true },
   ],
 };
 
@@ -242,6 +270,7 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     salonSlogan: "Ordu Altınordu'da Lüks Hizmet. Profesyonel kadromuzla güzelliğinize değer katıyoruz.",
   },
   priceList: DEFAULT_PRICE_LIST,
+  appointmentSettings: DEFAULT_APPOINTMENT_SETTINGS,
 };
 
 const USER_COLORS = ["#b84d5b", "#bd8c74", "#e8a5b2", "#4caf7d", "#54352b"];
@@ -393,6 +422,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           storeProducts: Array.isArray(parsed.storeProducts) ? parsed.storeProducts : DEFAULT_SITE_CONTENT.storeProducts,
           staffMembers: Array.isArray(parsed.staffMembers) ? parsed.staffMembers : DEFAULT_SITE_CONTENT.staffMembers,
           priceList: parsed.priceList ? { ...DEFAULT_PRICE_LIST, ...parsed.priceList } : DEFAULT_PRICE_LIST,
+          appointmentSettings: parsed.appointmentSettings
+            ? { ...DEFAULT_APPOINTMENT_SETTINGS, ...parsed.appointmentSettings, categories: Array.isArray(parsed.appointmentSettings.categories) ? parsed.appointmentSettings.categories : DEFAULT_APPOINTMENT_SETTINGS.categories }
+            : DEFAULT_APPOINTMENT_SETTINGS,
         };
       }
     } catch { /* empty */ }
@@ -430,6 +462,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             priceList: c.priceList
               ? { ...DEFAULT_PRICE_LIST, ...c.priceList }
               : DEFAULT_PRICE_LIST,
+            appointmentSettings: c.appointmentSettings
+              ? { ...DEFAULT_APPOINTMENT_SETTINGS, ...c.appointmentSettings, categories: Array.isArray(c.appointmentSettings.categories) ? c.appointmentSettings.categories : DEFAULT_APPOINTMENT_SETTINGS.categories }
+              : DEFAULT_APPOINTMENT_SETTINGS,
           };
           setSiteContent(merged);
           try { localStorage.setItem("bw_site_content", JSON.stringify(merged)); } catch { /* empty */ }
