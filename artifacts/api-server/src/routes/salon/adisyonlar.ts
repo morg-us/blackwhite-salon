@@ -113,7 +113,7 @@ router.post("/", async (req, res) => {
 
     res.status(201).json(mapRow(created));
   } catch {
-    res.status(500).json({ error: "Failed to create adisyon" });
+    return res.status(500).json({ error: "Failed to create adisyon" });
   }
 });
 
