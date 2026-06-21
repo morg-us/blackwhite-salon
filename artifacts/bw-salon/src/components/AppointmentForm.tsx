@@ -54,6 +54,7 @@ export function AppointmentForm() {
         staff: values.staff,
         date: values.date.toISOString(),
         time: values.time,
+        status: "pending",
       });
     } finally {
       setIsSubmitting(false);

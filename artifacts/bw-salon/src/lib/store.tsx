@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useRef } from "react";
+import { useUser } from "@clerk/react";
 
 export type AppointmentStatus = "pending" | "came" | "no_show";
 export type Appointment = { id: string; name: string; phone: string; category: string; staff: string; date: string; time: string; status: AppointmentStatus; };
@@ -506,6 +507,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     loadAll();
   }, []);
+
+  // ── Clerk OAuth sync ──────────────────────────────────────
+  const { user: clerkUser, isSignedIn } = useUser();
+  const clerkSynced = useRef(false);
+  useEffect(() => {
+    if (!isSignedIn || !clerkUser || currentUser || clerkSynced.current) return;
+    clerkSynced.current = true;
+    api<SiteUser>("/site-users/clerk-sync", { method: "POST" })
+      .then(u => {
+        setCurrentUser(u);
+        setUsers(prev => prev.find(x => x.id === u.id) ? prev.map(x => x.id === u.id ? u : x) : [...prev, u]);
+        sessionStorage.setItem("bw_current_user_id", u.id);
+      })
+      .catch(() => { clerkSynced.current = false; });
+  }, [isSignedIn, clerkUser, currentUser]);
+
+  useEffect(() => {
+    if (!isSignedIn) clerkSynced.current = false;
+  }, [isSignedIn]);
 
   // ── Persist cart locally ──────────────────────────────────
   useEffect(() => {

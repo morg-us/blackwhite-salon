@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { siteUsersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
+import { getAuth, clerkClient } from "@clerk/express";
 
 const router = Router();
 
@@ -51,6 +52,47 @@ router.post("/login", async (req, res) => {
     res.json(mapRow(user));
   } catch {
     res.status(500).json({ error: "Failed to login" });
+  }
+});
+
+router.post("/clerk-sync", async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const clerkUser = await clerkClient.users.getUser(userId);
+    const email = clerkUser.emailAddresses[0]?.emailAddress ?? "";
+    const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || email.split("@")[0] || "Kullanıcı";
+
+    const existing = await db.select().from(siteUsersTable).where(
+      or(eq(siteUsersTable.id, userId), eq(siteUsersTable.email, email))
+    );
+
+    if (existing.length > 0) {
+      const user = existing[0];
+      if (user.id !== userId || user.name !== name) {
+        const [updated] = await db.update(siteUsersTable)
+          .set({ id: userId, name, email })
+          .where(eq(siteUsersTable.id, user.id))
+          .returning();
+        return res.json(mapRow(updated));
+      }
+      return res.json(mapRow(user));
+    }
+
+    const COLORS = ["#b84d5b", "#bd8c74", "#8b7355", "#c9a96e", "#d4b896", "#e8a5b2"];
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const [created] = await db.insert(siteUsersTable).values({
+      id: userId,
+      name,
+      email,
+      password: "__clerk_oauth__",
+      avatarColor: color,
+    }).returning();
+    return res.status(201).json(mapRow(created));
+  } catch (e) {
+    req.log?.error(e);
+    return res.status(500).json({ error: "Failed to sync clerk user" });
   }
 });
 
