@@ -211,6 +211,23 @@ function ScannedCard({
     setNote("");
   };
 
+  // Calculate expected financial impact for the current movement
+  const calcAmount = (): { label: string; amount: number; color: string } | null => {
+    if (activeTab === "duzeltme") return null;
+    if (activeTab === "giris") {
+      const amt = qty * product.costPrice;
+      return amt > 0 ? { label: "Gider (maliyet)", amount: amt, color: RED } : null;
+    }
+    // cikis
+    if (reason === "Satış" || reason === "İade") {
+      const amt = qty * product.salePrice;
+      return amt > 0 ? { label: reason === "İade" ? "Gelir (iade)" : "Gelir (satış)", amount: amt, color: GREEN } : null;
+    }
+    const amt = qty * product.costPrice;
+    return amt > 0 ? { label: "Gider (maliyet)", amount: amt, color: RED } : null;
+  };
+  const txnPreview = calcAmount();
+
   return (
     <div className="bg-card border-2 rounded-2xl p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200" style={{ borderColor: ROSE + "55" }} data-modal-open="true">
       <div className="flex items-start justify-between">
@@ -229,7 +246,7 @@ function ScannedCard({
       </div>
 
       {/* Stock info row */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <div className="bg-background rounded-xl p-3 text-center border border-border">
           <p className="text-xs text-muted-foreground">Mevcut Stok</p>
           <p className="text-2xl font-bold mt-1" style={{ color: isLow ? RED : GREEN }}>{product.stock}</p>
@@ -241,8 +258,13 @@ function ScannedCard({
           <p className="text-xs text-muted-foreground">{product.unit}</p>
         </div>
         <div className="bg-background rounded-xl p-3 text-center border border-border">
+          <p className="text-xs text-muted-foreground">Maliyet</p>
+          <p className="text-base font-bold mt-1" style={{ color: CARAMEL }}>{product.costPrice > 0 ? product.costPrice + " TL" : "—"}</p>
+          <p className="text-xs text-muted-foreground">/{product.unit}</p>
+        </div>
+        <div className="bg-background rounded-xl p-3 text-center border border-border">
           <p className="text-xs text-muted-foreground">Satış Fiyatı</p>
-          <p className="text-lg font-bold mt-1" style={{ color: CARAMEL }}>{product.salePrice} TL</p>
+          <p className="text-base font-bold mt-1" style={{ color: CARAMEL }}>{product.salePrice > 0 ? product.salePrice + " TL" : "—"}</p>
           <p className="text-xs text-muted-foreground">/{product.unit}</p>
         </div>
       </div>
@@ -318,12 +340,19 @@ function ScannedCard({
               />
             </div>
 
-            <div className="flex justify-between items-center pt-1">
-              <p className="text-sm text-muted-foreground">
-                {tab === "giris" && `Sonraki stok: ${product.stock + qty} ${product.unit}`}
-                {tab === "cikis" && `Sonraki stok: ${Math.max(0, product.stock - qty)} ${product.unit}`}
-                {tab === "duzeltme" && `Fark: ${qty - product.stock >= 0 ? "+" : ""}${qty - product.stock} ${product.unit}`}
-              </p>
+            <div className="flex justify-between items-center pt-1 flex-wrap gap-2">
+              <div className="flex flex-col gap-0.5">
+                <p className="text-sm text-muted-foreground">
+                  {tab === "giris" && `Sonraki stok: ${product.stock + qty} ${product.unit}`}
+                  {tab === "cikis" && `Sonraki stok: ${Math.max(0, product.stock - qty)} ${product.unit}`}
+                  {tab === "duzeltme" && `Fark: ${qty - product.stock >= 0 ? "+" : ""}${qty - product.stock} ${product.unit}`}
+                </p>
+                {txnPreview && (
+                  <p className="text-xs font-semibold" style={{ color: txnPreview.color }}>
+                    ↳ {txnPreview.label}: {txnPreview.amount.toLocaleString("tr-TR")} TL finansal kaydı oluşturulacak
+                  </p>
+                )}
+              </div>
               <Button
                 onClick={handleSubmit}
                 data-testid={`btn-confirm-${tab}`}

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useStore, Adisyon, AdisyonItem, Transaction } from "@/lib/store";
+import { useStore, Adisyon, AdisyonItem, Transaction, InventoryProduct, StockMovement } from "@/lib/store";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -832,20 +832,232 @@ function UrunAnalizTab() {
   );
 }
 
+// ─── Stok Finans Tab ─────────────────────────────────────────────────────────
+function StokFinansTab() {
+  const { transactions, inventory, stockMovements } = useStore();
+
+  const STOK_GIDER_CATS = ["Ürün Alımı", "Hizmet Malzeme", "Fire / Bozulma", "Stok Çıkışı"];
+  const STOK_GELIR_CATS = ["Stok Satışı", "Stok İadesi"];
+
+  const stokTxns = useMemo(
+    () => transactions.filter(t => [...STOK_GIDER_CATS, ...STOK_GELIR_CATS].includes(t.category)),
+    [transactions]
+  );
+
+  const totalAlinan = useMemo(() =>
+    transactions.filter(t => t.category === "Ürün Alımı").reduce((s, t) => s + t.amount, 0),
+    [transactions]
+  );
+  const totalSatilan = useMemo(() =>
+    transactions.filter(t => t.category === "Stok Satışı" || t.category === "Stok İadesi").reduce((s, t) => s + t.amount, 0),
+    [transactions]
+  );
+  const totalMalzeme = useMemo(() =>
+    transactions.filter(t => t.category === "Hizmet Malzeme").reduce((s, t) => s + t.amount, 0),
+    [transactions]
+  );
+  const totalFire = useMemo(() =>
+    transactions.filter(t => t.category === "Fire / Bozulma").reduce((s, t) => s + t.amount, 0),
+    [transactions]
+  );
+  const stokGelir = totalSatilan;
+  const stokGider = totalAlinan + totalMalzeme + totalFire;
+  const stokKar = stokGelir - stokGider;
+
+  // Stock value in hand (cost-based)
+  const stokDegeri = useMemo(() =>
+    inventory.reduce((s, p) => s + p.stock * p.costPrice, 0),
+    [inventory]
+  );
+  const stokSatisDegeri = useMemo(() =>
+    inventory.reduce((s, p) => s + p.stock * p.salePrice, 0),
+    [inventory]
+  );
+  const potansiyelKar = stokSatisDegeri - stokDegeri;
+
+  // Monthly chart data for stock transactions
+  const monthlyData = useMemo(() => {
+    const result: Record<string, { ay: string; gelir: number; gider: number }> = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      result[key] = { ay: format(d, "MMM", { locale: tr }), gelir: 0, gider: 0 };
+    }
+    stokTxns.forEach(t => {
+      const d = new Date(t.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (result[key]) {
+        if (t.type === "gelir") result[key].gelir += t.amount;
+        else result[key].gider += t.amount;
+      }
+    });
+    return Object.values(result);
+  }, [stokTxns]);
+
+  // Movement breakdown by type
+  const movementSummary = useMemo(() => {
+    const giris = stockMovements.filter(m => m.type === "giris");
+    const cikis = stockMovements.filter(m => m.type === "cikis");
+    const duzeltme = stockMovements.filter(m => m.type === "duzeltme");
+    return {
+      girisCount: giris.length,
+      cikisCount: cikis.length,
+      duzeltmeCount: duzeltme.length,
+      satirSatis: cikis.filter(m => m.reason === "Satış").length,
+      satirHizmet: cikis.filter(m => m.reason === "Hizmet Kullanımı").length,
+      satirFire: cikis.filter(m => m.reason === "Fire / Bozulma").length,
+    };
+  }, [stockMovements]);
+
+  const PIE_COLORS = [PALETTE.rose, PALETTE.caramel, PALETTE.softPink, PALETTE.cream, PALETTE.brown, "#7b68ee"];
+
+  const giderByCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    transactions.filter(t => STOK_GIDER_CATS.includes(t.category)).forEach(t => {
+      map[t.category] = (map[t.category] || 0) + t.amount;
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [transactions]);
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KpiCard label="Ürün Alım Maliyeti" value={fmt(totalAlinan)} icon={<TrendingDown className="w-5 h-5" />} color={PALETTE.red} />
+        <KpiCard label="Stok Satış Geliri" value={fmt(totalSatilan)} icon={<TrendingUp className="w-5 h-5" />} color={PALETTE.green} />
+        <KpiCard label="Hizmet Malzeme" value={fmt(totalMalzeme)} icon={<TrendingDown className="w-5 h-5" />} color={PALETTE.caramel} />
+        <KpiCard
+          label="Stok Net Kar/Zarar"
+          value={fmt(stokKar)}
+          icon={<Wallet className="w-5 h-5" />}
+          color={stokKar >= 0 ? PALETTE.green : PALETTE.red}
+        />
+      </div>
+
+      {/* Stok değeri */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-card border border-border rounded-xl p-5 space-y-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Mevcut Stok Değeri (Maliyet)</p>
+          <p className="text-2xl font-bold" style={{ color: PALETTE.caramel }}>{fmt(stokDegeri)}</p>
+          <p className="text-xs text-muted-foreground">Depodaki ürünlerin toplam maliyeti</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-5 space-y-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Potansiyel Satış Değeri</p>
+          <p className="text-2xl font-bold" style={{ color: PALETTE.rose }}>{fmt(stokSatisDegeri)}</p>
+          <p className="text-xs text-muted-foreground">Tüm stok satılırsa elde edilecek gelir</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-5 space-y-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Potansiyel Brüt Kar</p>
+          <p className="text-2xl font-bold" style={{ color: potansiyelKar >= 0 ? PALETTE.green : PALETTE.red }}>{fmt(potansiyelKar)}</p>
+          <p className="text-xs text-muted-foreground">Satış değeri − maliyet değeri</p>
+        </div>
+      </div>
+
+      {/* Stok hareket istatistikleri */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {[
+          { label: "Toplam Giriş", value: movementSummary.girisCount, color: PALETTE.green },
+          { label: "Toplam Çıkış", value: movementSummary.cikisCount, color: PALETTE.red },
+          { label: "Düzeltme", value: movementSummary.duzeltmeCount, color: PALETTE.caramel },
+          { label: "Satış Çıkışı", value: movementSummary.satirSatis, color: PALETTE.rose },
+          { label: "Hizmet Kullanımı", value: movementSummary.satirHizmet, color: PALETTE.softPink },
+          { label: "Fire / Bozulma", value: movementSummary.satirFire, color: PALETTE.brown },
+        ].map(stat => (
+          <div key={stat.label} className="bg-card border border-border rounded-xl p-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
+            <p className="text-xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Monthly chart */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Son 6 Ay — Stok Gelir / Gider</h3>
+        {monthlyData.some(d => d.gelir > 0 || d.gider > 0) ? (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+              <XAxis dataKey="ay" tick={{ fill: "#888", fontSize: 12 }} />
+              <YAxis tick={{ fill: "#888", fontSize: 11 }} tickFormatter={v => v >= 1000 ? (v / 1000).toFixed(0) + "k" : v} />
+              <Tooltip formatter={(val: number) => fmt(val)} contentStyle={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 8 }} />
+              <Bar dataKey="gelir" name="Stok Geliri" fill={PALETTE.green} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="gider" name="Stok Gideri" fill={PALETTE.rose} radius={[4, 4, 0, 0]} />
+              <Legend formatter={(val) => <span style={{ color: "#ccc", fontSize: 12 }}>{val}</span>} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-center text-muted-foreground py-10 text-sm">Henüz stok hareketi kayıtlı değil.</p>
+        )}
+      </div>
+
+      {/* Gider dağılımı */}
+      {giderByCategory.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Stok Gider Dağılımı</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie data={giderByCategory} cx="50%" cy="50%" outerRadius={70} dataKey="value" nameKey="name"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                {giderByCategory.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+              </Pie>
+              <Tooltip formatter={(val: number) => fmt(val)} contentStyle={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 8 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Recent stock transactions */}
+      {stokTxns.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Son Stok İşlemleri</h3>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {[...stokTxns].reverse().slice(0, 30).map(t => (
+              <div key={t.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                    style={{
+                      background: t.type === "gelir" ? PALETTE.green + "22" : PALETTE.red + "22",
+                      color: t.type === "gelir" ? PALETTE.green : PALETTE.red,
+                    }}>
+                    {t.type === "gelir" ? "Gelir" : "Gider"}
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium">{t.category}</p>
+                    <p className="text-xs text-muted-foreground">{t.description}</p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0 ml-3">
+                  <p className="text-sm font-bold" style={{ color: t.type === "gelir" ? PALETTE.green : PALETTE.red }}>
+                    {t.type === "gelir" ? "+" : "-"}{fmt(t.amount)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{format(new Date(t.date), "d MMM HH:mm", { locale: tr })}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Export ──────────────────────────────────────────────────────────────
 export function AdminFinance() {
   return (
     <Tabs defaultValue="ozet" className="w-full">
-      <TabsList className="mb-6 grid w-full grid-cols-4 bg-background border border-border rounded-lg p-1">
+      <TabsList className="mb-6 grid w-full grid-cols-5 bg-background border border-border rounded-lg p-1">
         <TabsTrigger value="ozet" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Özet</TabsTrigger>
         <TabsTrigger value="adisyon" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Adisyon</TabsTrigger>
         <TabsTrigger value="gelir-gider" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Gelir / Gider</TabsTrigger>
         <TabsTrigger value="urun" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Ürün Analizi</TabsTrigger>
+        <TabsTrigger value="stok" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">📦 Stok Finans</TabsTrigger>
       </TabsList>
       <TabsContent value="ozet"><OzetTab /></TabsContent>
       <TabsContent value="adisyon"><AdisyonTab /></TabsContent>
       <TabsContent value="gelir-gider"><GelirGiderTab /></TabsContent>
       <TabsContent value="urun"><UrunAnalizTab /></TabsContent>
+      <TabsContent value="stok"><StokFinansTab /></TabsContent>
     </Tabs>
   );
 }

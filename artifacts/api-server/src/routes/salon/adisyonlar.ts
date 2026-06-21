@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { adisyonlarTable, transactionsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { adisyonlarTable, transactionsTable, inventoryTable, stockMovementsTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -19,6 +19,59 @@ function mapRow(row: typeof adisyonlarTable.$inferSelect) {
     note: row.note,
     status: row.status,
   };
+}
+
+// When an adisyon closes, decrease inventory for any "urun" items and track COGS.
+async function processStockOnClose(adisyonId: string, items: Array<{ id: string; type: string; name: string; quantity: number; unitPrice: number; total: number }>, paymentMethod: string) {
+  const urunItems = items.filter(i => i.type === "urun");
+  if (!urunItems.length) return;
+
+  for (const item of urunItems) {
+    // Find matching inventory product by name (case-insensitive)
+    const products = await db
+      .select()
+      .from(inventoryTable)
+      .where(sql`lower(${inventoryTable.name}) = lower(${item.name})`)
+      .limit(1);
+
+    if (!products.length) continue;
+    const product = products[0];
+
+    const newStock = Math.max(0, product.stock - item.quantity);
+
+    // 1. Update inventory
+    await db.update(inventoryTable)
+      .set({ stock: newStock })
+      .where(eq(inventoryTable.id, product.id));
+
+    // 2. Record stock movement
+    const movementId = `stk_adisyon_${adisyonId}_${item.id}`;
+    await db.insert(stockMovementsTable).values({
+      id: movementId,
+      productId: product.id,
+      productName: product.name,
+      barcode: product.barcode,
+      type: "cikis",
+      quantity: item.quantity,
+      reason: "Hizmet Kullanımı",
+      note: `Adisyon #${adisyonId}`,
+      stockAfter: newStock,
+    }).onConflictDoNothing();
+
+    // 3. Track cost of goods sold (COGS) as expense
+    const costPrice = parseFloat(product.costPrice as string) || 0;
+    const cogs = item.quantity * costPrice;
+    if (cogs > 0) {
+      await db.insert(transactionsTable).values({
+        id: `txn_cogs_${adisyonId}_${item.id}`,
+        type: "gider",
+        category: "Hizmet Malzeme",
+        description: `${item.name} × ${item.quantity} — Adisyon #${adisyonId}`,
+        amount: String(cogs.toFixed(2)),
+        paymentMethod,
+      }).onConflictDoNothing();
+    }
+  }
 }
 
 router.get("/", async (req, res) => {
@@ -45,6 +98,7 @@ router.post("/", async (req, res) => {
       note: note ?? "",
       status: status ?? "acik",
     }).returning();
+
     if (status === "kapali") {
       await db.insert(transactionsTable).values({
         id: `txn_${id}`,
@@ -54,7 +108,9 @@ router.post("/", async (req, res) => {
         amount: String(total),
         paymentMethod,
       });
+      await processStockOnClose(id, items ?? [], paymentMethod);
     }
+
     res.status(201).json(mapRow(created));
   } catch {
     res.status(500).json({ error: "Failed to create adisyon" });
@@ -79,6 +135,7 @@ router.put("/:id", async (req, res) => {
       ...(status !== undefined && { status }),
     }).where(eq(adisyonlarTable.id, req.params.id)).returning();
 
+    // Only trigger on first close (not re-close)
     if (status === "kapali" && existing[0].status !== "kapali") {
       await db.insert(transactionsTable).values({
         id: `txn_close_${req.params.id}`,
@@ -88,7 +145,11 @@ router.put("/:id", async (req, res) => {
         amount: String(updated.total),
         paymentMethod: updated.paymentMethod,
       });
+
+      const parsedItems = items ?? JSON.parse(existing[0].items);
+      await processStockOnClose(req.params.id, parsedItems, updated.paymentMethod);
     }
+
     res.json(mapRow(updated));
   } catch {
     res.status(500).json({ error: "Failed to update adisyon" });
