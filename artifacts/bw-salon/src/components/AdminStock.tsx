@@ -29,20 +29,89 @@ const SOFT_PINK = "#e8a5b2";
 function fmt(n: number) { return n.toLocaleString("tr-TR") + " TL"; }
 
 // ─── Barcode Scanner Zone ─────────────────────────────────────────────────────
-function ScannerZone({ onScan }: { onScan: (code: string) => void }) {
+//
+// Hardware scanners act like keyboards: they type very fast then press Enter.
+// We detect "scanner speed" via a global keydown listener (chars arriving < 60ms apart).
+// When a form is open (disabled=true) the global listener is off so the scanner
+// types naturally into whichever form field is focused (e.g. the barcode field).
+//
+function ScannerZone({ onScan, disabled }: { onScan: (code: string) => void; disabled?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
+  const [scanning, setScanning] = useState(false);   // visual indicator while scanner is sending chars
 
-  // Keep input focused so scanner can type into it at any time
+  const bufferRef = useRef("");
+  const lastKeyTimeRef = useRef(0);
+  const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Global hardware-scanner listener ────────────────────────────────────────
+  // Only active when no form is open (disabled=false).
+  // Detects chars arriving faster than human typing (< 60 ms apart) = scanner.
+  // Ignores keystrokes when any INPUT / TEXTAREA / SELECT other than our own is focused.
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (document.activeElement !== inputRef.current && !document.querySelector("[data-modal-open]")) {
-        inputRef.current?.focus();
+    if (disabled) return;
+
+    const SCANNER_GAP_MS = 60;   // scanner chars arrive < 60 ms apart
+    const MIN_LEN = 3;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const tag = target.tagName;
+      const isOtherInput =
+        (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") &&
+        target !== inputRef.current;
+
+      // Let the focused form field handle its own keystrokes
+      if (isOtherInput) return;
+
+      const now = Date.now();
+      const gap = now - lastKeyTimeRef.current;
+      lastKeyTimeRef.current = now;
+
+      // If gap is too large this is human typing — reset buffer
+      if (gap > 200 && bufferRef.current) {
+        bufferRef.current = "";
+        setScanning(false);
       }
-    }, 1500);
-    return () => clearInterval(interval);
-  }, []);
+
+      if (e.key === "Enter") {
+        const code = bufferRef.current.trim() || value.trim();
+        if (code.length >= MIN_LEN) {
+          onScan(code);
+          bufferRef.current = "";
+          setValue("");
+          setScanning(false);
+          if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // Only accumulate single printable chars from scanner speed bursts
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (target !== inputRef.current) {
+          // Global capture — only if scanner speed
+          if (gap <= SCANNER_GAP_MS || bufferRef.current.length > 0) {
+            bufferRef.current += e.key;
+            setScanning(true);
+            if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+            // Auto-clear if Enter never comes (scanner malfunction / stray key)
+            scanTimerRef.current = setTimeout(() => {
+              bufferRef.current = "";
+              setScanning(false);
+            }, 500);
+          }
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+    };
+  }, [disabled, onScan, value]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && value.trim()) {
@@ -51,47 +120,63 @@ function ScannerZone({ onScan }: { onScan: (code: string) => void }) {
     }
   };
 
+  const statusBadge = () => {
+    if (disabled) return <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Form açık — odak serbest</span>;
+    if (scanning) return <span className="text-xs px-2 py-0.5 rounded-full animate-pulse" style={{ background: GREEN + "33", color: GREEN }}>Taranıyor…</span>;
+    if (focused) return <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: GREEN + "33", color: GREEN }}>Hazır</span>;
+    return <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">Aktif — her yerden okutun</span>;
+  };
+
   return (
     <div
-      className={`relative flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border-2 transition-colors cursor-text ${focused ? "border-primary bg-card" : "border-dashed border-border bg-card/50"}`}
-      onClick={() => inputRef.current?.focus()}
+      className={`relative flex flex-col items-center justify-center gap-4 p-6 rounded-2xl border-2 transition-colors ${
+        disabled ? "border-dashed border-border/40 bg-card/20 opacity-60" :
+        scanning ? "border-primary bg-card" :
+        focused ? "border-primary bg-card" :
+        "border-dashed border-border bg-card/50 cursor-text"
+      }`}
+      onClick={() => !disabled && inputRef.current?.focus()}
       data-testid="scanner-zone"
     >
-      <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: ROSE + "22" }}>
-        <Scan className="w-8 h-8" style={{ color: ROSE }} />
-      </div>
-      <div className="text-center">
-        <p className="font-semibold text-base">Barkod Okuyucu Alanı</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          Barkod okuyucuyu bu alana yönlendirin ve okutun — ya da barkodu aşağıya yazıp Enter'a basın
-        </p>
-      </div>
-      <div className="flex gap-2 w-full max-w-xs">
-        <Input
-          ref={inputRef}
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onKeyDown={handleKey}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          placeholder="Barkod buraya..."
-          className="bg-background border-border text-center tracking-widest font-mono"
-          autoComplete="off"
-          data-testid="input-barcode-scan"
-        />
-        <Button
-          onClick={() => { if (value.trim()) { onScan(value.trim()); setValue(""); } }}
-          style={{ background: ROSE }}
-          data-testid="btn-scan-submit"
-        >
-          <Scan className="w-4 h-4" />
-        </Button>
-      </div>
-      {focused && (
-        <div className="absolute top-3 right-3">
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: GREEN + "33", color: GREEN }}>Hazır</span>
+      <div className="absolute top-3 right-3">{statusBadge()}</div>
+
+      <div className="flex items-center gap-4 w-full">
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors ${scanning ? "animate-pulse" : ""}`}
+          style={{ background: ROSE + "22" }}>
+          <Scan className="w-6 h-6" style={{ color: ROSE }} />
         </div>
-      )}
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">Barkod Okuyucu</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {disabled
+              ? "Form açıkken barkod okuyucu doğrudan barkod alanına yazar"
+              : "Gerçek barkod okuyucuyu herhangi bir yerde kullanın — ya da aşağıya yazıp Enter'a basın"}
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Input
+            ref={inputRef}
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            onKeyDown={handleKey}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="Barkod..."
+            className="bg-background border-border text-center tracking-widest font-mono w-36"
+            autoComplete="off"
+            disabled={disabled}
+            data-testid="input-barcode-scan"
+          />
+          <Button
+            onClick={() => { if (value.trim()) { onScan(value.trim()); setValue(""); } }}
+            style={{ background: ROSE }}
+            disabled={disabled || !value.trim()}
+            data-testid="btn-scan-submit"
+          >
+            <Scan className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -465,8 +550,8 @@ export function AdminStock() {
         </div>
       </div>
 
-      {/* Scanner zone */}
-      <ScannerZone onScan={handleScan} />
+      {/* Scanner zone — disabled when a form is open so scanner types into form fields directly */}
+      <ScannerZone onScan={handleScan} disabled={showAddForm || !!editProduct} />
 
       {/* Unknown barcode: offer to add */}
       {unknownBarcode && !scannedProduct && !showAddForm && !editProduct && (
