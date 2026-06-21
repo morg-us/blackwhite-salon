@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { LogOut, Users, ShoppingBag, Calendar, MessageSquare, TrendingUp, Star, Trash2 } from "lucide-react";
+import { LogOut, Users, ShoppingBag, Calendar, MessageSquare, TrendingUp, Star, Trash2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import type { AppointmentStatus } from "@/lib/store";
 
 export function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -17,7 +18,7 @@ export function AdminPanel() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const { appointments, messages, orders, users, reviews, deleteReview, transactions } = useStore();
+  const { appointments, messages, orders, users, reviews, deleteReview, transactions, updateAppointmentStatus } = useStore();
 
   useEffect(() => {
     const auth = sessionStorage.getItem("bw_admin_auth");
@@ -236,11 +237,12 @@ export function AdminPanel() {
                     <TableHead className="hidden sm:table-cell">Telefon</TableHead>
                     <TableHead className="hidden md:table-cell">Kategori</TableHead>
                     <TableHead>Uzman</TableHead>
+                    <TableHead className="text-center">Durum</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {appointments.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Kayıt bulunamadı.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Kayıt bulunamadı.</TableCell></TableRow>
                   ) : (
                     appointments.slice().reverse().map(app => (
                       <TableRow key={app.id}>
@@ -252,6 +254,12 @@ export function AdminPanel() {
                         <TableCell className="hidden sm:table-cell text-sm">{app.phone}</TableCell>
                         <TableCell className="hidden md:table-cell capitalize text-sm">{app.category}</TableCell>
                         <TableCell className="text-sm">{app.staff}</TableCell>
+                        <TableCell className="text-center">
+                          <AppointmentStatusToggle
+                            status={(app.status ?? "pending") as AppointmentStatus}
+                            onChange={s => updateAppointmentStatus(app.id, s)}
+                          />
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -359,6 +367,62 @@ export function AdminPanel() {
             </div>
           </TabsContent>
         </Tabs>
+      </div>
+    </div>
+  );
+}
+
+function AppointmentStatusToggle({
+  status,
+  onChange,
+}: {
+  status: AppointmentStatus;
+  onChange: (s: AppointmentStatus) => void;
+}) {
+  if (status === "came") {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/15 text-green-600 dark:text-green-400 text-xs font-semibold">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Geldi
+        </span>
+        <button onClick={() => onChange("pending")} className="text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-2">
+          sıfırla
+        </button>
+      </div>
+    );
+  }
+  if (status === "no_show") {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/15 text-red-600 dark:text-red-400 text-xs font-semibold">
+          <XCircle className="w-3.5 h-3.5" /> Gelmedi
+        </span>
+        <button onClick={() => onChange("pending")} className="text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-2">
+          sıfırla
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
+        <Clock className="w-3 h-3" /> Bekliyor
+      </span>
+      <div className="flex gap-1">
+        <button
+          onClick={() => onChange("came")}
+          title="Geldi olarak işaretle"
+          className="flex items-center gap-0.5 px-2 py-1 rounded-md bg-green-500/10 hover:bg-green-500/25 text-green-600 dark:text-green-400 text-[11px] font-medium transition-colors"
+        >
+          <CheckCircle2 className="w-3 h-3" /> Geldi
+        </button>
+        <button
+          onClick={() => onChange("no_show")}
+          title="Gelmedi olarak işaretle"
+          className="flex items-center gap-0.5 px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/25 text-red-600 dark:text-red-400 text-[11px] font-medium transition-colors"
+        >
+          <XCircle className="w-3 h-3" /> Gelmedi
+        </button>
       </div>
     </div>
   );

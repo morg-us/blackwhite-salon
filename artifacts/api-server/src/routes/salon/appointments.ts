@@ -66,6 +66,24 @@ router.get("/my", async (req, res) => {
   }
 });
 
+router.patch("/:id/status", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { status } = req.body as { status: string };
+    if (!["pending", "came", "no_show"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+    const [updated] = await db
+      .update(appointmentsTable)
+      .set({ status })
+      .where(eq(appointmentsTable.id, id))
+      .returning();
+    res.json(updated);
+  } catch {
+    res.status(500).json({ error: "Failed to update appointment status" });
+  }
+});
+
 router.delete("/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);

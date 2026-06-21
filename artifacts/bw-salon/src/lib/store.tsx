@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useRef } from "react";
 
-export type Appointment = { id: string; name: string; phone: string; category: string; staff: string; date: string; time: string; };
+export type AppointmentStatus = "pending" | "came" | "no_show";
+export type Appointment = { id: string; name: string; phone: string; category: string; staff: string; date: string; time: string; status: AppointmentStatus; };
 export type Message = { id: string; name: string; email: string; message: string; };
 export type CartItem = { id: string; name: string; price: number; quantity: number; image: string };
 export type Order = { id: string; items: CartItem[]; total: number; date: string; customerName: string; userId?: string; userEmail?: string; };
@@ -248,6 +249,7 @@ type StoreContextType = {
   isLoaded: boolean;
   appointments: Appointment[];
   addAppointment: (app: Omit<Appointment, "id">) => Promise<void>;
+  updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
   messages: Message[];
   addMessage: (msg: Omit<Message, "id">) => void;
   cart: CartItem[];
@@ -442,6 +444,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             staff: String(a.staff),
             date: String(a.date),
             time: String(a.time),
+            status: (String(a.status ?? "pending")) as AppointmentStatus,
           })));
         }
         if (Array.isArray(msgs)) {
@@ -536,7 +539,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       method: "POST",
       body: JSON.stringify(app),
     });
-    setAppointments(prev => [...prev, { ...created, id: String(created.id) }]);
+    setAppointments(prev => [...prev, { ...created, id: String(created.id), status: (created.status ?? "pending") as AppointmentStatus }]);
+  };
+
+  const updateAppointmentStatus = (id: string, status: AppointmentStatus) => {
+    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+    api(`/appointments/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }).catch(console.error);
   };
 
   // ── Messages ──────────────────────────────────────────────
@@ -808,7 +816,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   return (
     <StoreContext.Provider value={{
-      appointments, addAppointment,
+      appointments, addAppointment, updateAppointmentStatus,
       messages, addMessage,
       cart, isCartOpen, setIsCartOpen, addToCart, updateCartItem, removeFromCart, clearCart,
       orders, addOrder,
