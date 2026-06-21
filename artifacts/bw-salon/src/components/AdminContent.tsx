@@ -190,7 +190,7 @@ const EMPTY_PRODUCT = { id: "", name: "", description: "", price: "", imageUrl: 
 const EMPTY_STAFF: Omit<StaffMember, "id"> = { name: "", title: "", experience: "", rating: 5.0, initials: "", tags: [], imageUrl: "" };
 
 const SAC_SUBCATS = ["ombre", "sombre", "kesim", "boyama", "röfle", "keratin", "gelin"];
-const PRICE_CAT_LABELS: Record<keyof PriceList, string> = {
+const PRICE_CAT_FALLBACK: Record<keyof PriceList, string> = {
   sac: "Saç Hizmetleri", makyaj: "Makyaj", gelin: "Gelin & Özel", manikur: "Manikür & Pedikür", agda: "Ağda",
 };
 
@@ -312,7 +312,13 @@ export function AdminContent() {
   };
 
   // ── APPOINTMENT SETTINGS ──
-  const [apptForm, setApptForm] = useState<AppointmentSettings>({ ...siteContent.appointmentSettings });
+  const deepCopyAppt = (s: AppointmentSettings): AppointmentSettings => ({
+    ...s,
+    timeSlots: [...s.timeSlots],
+    categories: s.categories.map(c => ({ ...c })),
+  });
+
+  const [apptForm, setApptForm] = useState<AppointmentSettings>(() => deepCopyAppt(siteContent.appointmentSettings));
   const [newTimeSlot, setNewTimeSlot] = useState("");
   const [newCategory, setNewCategory] = useState({ key: "", label: "" });
   const [editingCatIndex, setEditingCatIndex] = useState<number | null>(null);
@@ -320,7 +326,7 @@ export function AdminContent() {
   useEffect(() => {
     if (isLoaded) {
       setContactForm({ ...siteContent.contactInfo });
-      setApptForm({ ...siteContent.appointmentSettings });
+      setApptForm(deepCopyAppt(siteContent.appointmentSettings));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded]);
@@ -700,15 +706,18 @@ export function AdminContent() {
       {/* ── FİYAT LİSTESİ ── */}
       <TabsContent value="prices" className="space-y-6">
         <div className="flex flex-wrap gap-2 mb-4">
-          {(Object.keys(PRICE_CAT_LABELS) as (keyof PriceList)[]).map(cat => (
-            <button
-              key={cat}
-              onClick={() => { setPriceTab(cat); setEditingPrice(null); }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${priceTab === cat ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground hover:border-primary/50"}`}
-            >
-              {PRICE_CAT_LABELS[cat]}
-            </button>
-          ))}
+          {(Object.keys(siteContent.priceList) as (keyof PriceList)[]).map(cat => {
+            const catLabel = siteContent.appointmentSettings.categories.find(c => c.key === cat)?.label ?? PRICE_CAT_FALLBACK[cat] ?? cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => { setPriceTab(cat); setEditingPrice(null); }}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${priceTab === cat ? "bg-primary text-primary-foreground" : "bg-card border border-border text-muted-foreground hover:border-primary/50"}`}
+              >
+                {catLabel}
+              </button>
+            );
+          })}
         </div>
 
         <div className="space-y-2">

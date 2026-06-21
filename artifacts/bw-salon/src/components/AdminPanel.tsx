@@ -18,7 +18,12 @@ export function AdminPanel() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const { appointments, messages, orders, users, reviews, deleteReview, transactions, updateAppointmentStatus } = useStore();
+  const { appointments, messages, orders, users, reviews, deleteReview, transactions, updateAppointmentStatus, siteContent } = useStore();
+
+  const getCategoryLabel = (key: string) => {
+    const found = siteContent.appointmentSettings.categories.find(c => c.key === key);
+    return found ? found.label : key;
+  };
 
   useEffect(() => {
     const auth = sessionStorage.getItem("bw_admin_auth");
@@ -252,7 +257,7 @@ export function AdminPanel() {
                         </TableCell>
                         <TableCell className="text-sm">{app.name}</TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">{app.phone}</TableCell>
-                        <TableCell className="hidden md:table-cell capitalize text-sm">{app.category}</TableCell>
+                        <TableCell className="hidden md:table-cell text-sm">{getCategoryLabel(app.category)}</TableCell>
                         <TableCell className="text-sm">{app.staff}</TableCell>
                         <TableCell className="text-center">
                           <AppointmentStatusToggle
