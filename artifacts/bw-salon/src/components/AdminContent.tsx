@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, Component } from "react";
 import type { ReactNode } from "react";
 import { useStore } from "@/lib/store";
 import type { StaffMember, ContactInfo, PriceList, StaffRole, AppointmentSettings, AppointmentCategory } from "@/lib/store";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Instagram, MessageCircle, Clock, Facebook, KeyRound, UserPlus, ShieldCheck, MessageSquare, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, GripVertical, CalendarCheck } from "lucide-react";
+import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Instagram, MessageCircle, Clock, Facebook, KeyRound, UserPlus, ShieldCheck, MessageSquare, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, GripVertical, CalendarCheck, ChevronUp, ChevronDown, ExternalLink } from "lucide-react";
 
 type SmsNotification = {
   id: number;
@@ -46,12 +47,17 @@ function SmsLog() {
     return <span className="text-muted-foreground text-xs">Simüle</span>;
   };
 
+  const buildWaUrl = (phone: string, message: string) => {
+    const cleaned = phone.replace(/[\s+\-()]/g, "");
+    return `https://wa.me/${cleaned}?text=${encodeURIComponent(message)}`;
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="font-semibold text-lg flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" /> SMS Bildirimleri</h3>
-          <p className="text-sm text-muted-foreground mt-1">Randevu alındığında personele gönderilen SMS kayıtları.</p>
+          <h3 className="font-semibold text-lg flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" /> Bildirimler</h3>
+          <p className="text-sm text-muted-foreground mt-1">Randevu alındığında personele gönderilen SMS ve WhatsApp kayıtları.</p>
         </div>
         <button
           onClick={() => { setLoading(true); fetch("/api/sms-notifications").then(r => r.json()).then(d => setLogs(Array.isArray(d) ? d : [])).finally(() => setLoading(false)); }}
@@ -61,9 +67,11 @@ function SmsLog() {
         </button>
       </div>
 
-      <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl text-xs text-muted-foreground space-y-1">
-        <p className="font-medium text-foreground">📡 Netgsm entegrasyonu</p>
-        <p>Gerçek SMS göndermek için <code className="bg-muted px-1 rounded">NETGSM_USERNAME</code> ve <code className="bg-muted px-1 rounded">NETGSM_PASSWORD</code> ortam değişkenlerini ekleyin. Eklenene kadar SMS'ler burada "Simüle" olarak görünür.</p>
+      <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl text-xs text-muted-foreground space-y-1.5">
+        <p className="font-medium text-foreground">📡 Entegrasyon bilgisi</p>
+        <p>Gerçek SMS: <code className="bg-muted px-1 rounded">NETGSM_USERNAME</code> + <code className="bg-muted px-1 rounded">NETGSM_PASSWORD</code></p>
+        <p>Gerçek WhatsApp: <code className="bg-muted px-1 rounded">WHATSAPP_PHONE_ID</code> + <code className="bg-muted px-1 rounded">WHATSAPP_ACCESS_TOKEN</code> (Meta Business API)</p>
+        <p className="text-muted-foreground/70">Kimlik bilgileri yokken bildirimler "Simüle" olarak kaydedilir. WhatsApp simüle modunda linke tıklayarak mesajı elle iletebilirsiniz.</p>
       </div>
 
       {loading ? (
@@ -73,7 +81,7 @@ function SmsLog() {
       ) : logs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground border border-dashed border-border rounded-xl">
           <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-20" />
-          <p className="text-sm">Henüz SMS kaydı yok.</p>
+          <p className="text-sm">Henüz bildirim kaydı yok.</p>
           <p className="text-xs mt-1">Bir randevu alındığında burada görünecek.</p>
         </div>
       ) : (
@@ -82,9 +90,16 @@ function SmsLog() {
             <div key={log.id} className="p-4 border border-border rounded-xl bg-background space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  {statusIcon(log.status)}
+                  {log.type === "whatsapp"
+                    ? <MessageCircle className="w-4 h-4 text-green-500" />
+                    : statusIcon(log.status)}
                   <div>
-                    <p className="font-medium text-sm">{log.recipientName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-sm">{log.recipientName}</p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${log.type === "whatsapp" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                        {log.type === "whatsapp" ? "WhatsApp" : "SMS"}
+                      </span>
+                    </div>
                     <p className="text-xs text-muted-foreground">{log.to}</p>
                   </div>
                 </div>
@@ -96,6 +111,16 @@ function SmsLog() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground/80 bg-muted/40 rounded-lg p-2 whitespace-pre-wrap">{log.message}</p>
+              {log.type === "whatsapp" && log.to && (
+                <a
+                  href={buildWaUrl(log.to, log.message)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-medium hover:underline"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> WhatsApp'ta Aç
+                </a>
+              )}
             </div>
           ))}
         </div>
@@ -201,7 +226,7 @@ export function AdminContent() {
     updateSiteContent,
     addStoreProduct, updateStoreProduct, deleteStoreProduct,
     addGalleryItem, deleteGalleryItem,
-    addStaffMember, updateStaffMember, deleteStaffMember,
+    addStaffMember, updateStaffMember, deleteStaffMember, reorderStaffMembers,
     updatePriceItem, addPriceItem, deletePriceItem,
     staffUsers, addStaffUser, updateStaffUser, deleteStaffUser,
   } = useStore();
@@ -670,32 +695,59 @@ export function AdminContent() {
           </div>
         )}
 
-        <div className="grid gap-4">
-          {siteContent.staffMembers.map(s => (
-            <div key={s.id} className="flex items-center justify-between p-4 border border-border rounded-xl bg-background">
-              <div className="flex items-center gap-4">
-                <Avatar className="w-12 h-12 border border-border">
+        <div className="grid gap-3">
+          {siteContent.staffMembers.map((s, idx) => (
+            <div key={s.id} className="flex items-center gap-3 p-4 border border-border rounded-xl bg-background">
+              <div className="flex flex-col gap-1 shrink-0">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-20"
+                  disabled={idx === 0}
+                  onClick={() => reorderStaffMembers(s.id, "up")}
+                  title="Yukarı taşı"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-20"
+                  disabled={idx === siteContent.staffMembers.length - 1}
+                  onClick={() => reorderStaffMembers(s.id, "down")}
+                  title="Aşağı taşı"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Avatar className="w-12 h-12 border border-border shrink-0">
                   {s.imageUrl ? <AvatarImage src={s.imageUrl} className="object-cover" /> : null}
                   <AvatarFallback className="bg-muted text-primary font-serif">{s.initials}</AvatarFallback>
                 </Avatar>
-                <div>
-                  <h4 className="font-medium">{s.name}</h4>
-                  <p className="text-sm text-muted-foreground">{s.title} · {s.experience}</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="font-medium text-sm">{s.name}</h4>
+                    <span className="text-[10px] text-muted-foreground/60 shrink-0">#{idx + 1}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{s.title} · {s.experience}</p>
                   <div className="flex items-center gap-1 mt-0.5">
                     <Star className="w-3 h-3 fill-accent text-accent" />
                     <span className="text-xs text-muted-foreground">{s.rating}</span>
                     {s.tags.length > 0 && (
-                      <span className="text-xs text-muted-foreground ml-2">{s.tags.join(", ")}</span>
+                      <span className="text-xs text-muted-foreground ml-2 truncate">{s.tags.join(", ")}</span>
                     )}
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button size="icon" variant="outline" onClick={() => openStaffForm(s)}>
-                  <Edit2 className="w-4 h-4" />
+
+              <div className="flex gap-1.5 shrink-0">
+                <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => openStaffForm(s)}>
+                  <Edit2 className="w-3.5 h-3.5" />
                 </Button>
-                <Button size="icon" variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => deleteStaffMember(s.id)}>
-                  <Trash2 className="w-4 h-4" />
+                <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteStaffMember(s.id)}>
+                  <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
             </div>

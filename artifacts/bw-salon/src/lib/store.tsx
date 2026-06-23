@@ -347,6 +347,7 @@ type StoreContextType = {
   addStaffMember: (s: Omit<StaffMember, "id">) => void;
   updateStaffMember: (id: string, updates: Partial<StaffMember>) => void;
   deleteStaffMember: (id: string) => void;
+  reorderStaffMembers: (id: string, direction: "up" | "down") => void;
   updatePriceItem: (category: keyof PriceList, index: number, updates: Partial<PriceItem>) => void;
   addPriceItem: (category: keyof PriceList, item: PriceItem) => void;
   deletePriceItem: (category: keyof PriceList, index: number) => void;
@@ -432,6 +433,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   });
   const siteContentLoaded = useRef(false);
   const siteContentDirty = useRef(false);
+  const siteContentSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Load all data from API on mount ──────────────────────
   useEffect(() => {
@@ -585,7 +587,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!siteContentDirty.current) { siteContentDirty.current = true; return; }
     const json = JSON.stringify(siteContent);
     try { localStorage.setItem("bw_site_content", json); } catch { /* empty */ }
-    api("/site-content", { method: "PUT", body: json }).catch(console.error);
+    if (siteContentSaveTimer.current) clearTimeout(siteContentSaveTimer.current);
+    siteContentSaveTimer.current = setTimeout(() => {
+      api("/site-content", { method: "PUT", body: json }).catch(console.error);
+    }, 800);
   }, [siteContent]);
 
   // ── Appointments ──────────────────────────────────────────
@@ -851,6 +856,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const deleteStaffMember = (id: string) =>
     setSiteContent(prev => ({ ...prev, staffMembers: prev.staffMembers.filter(s => s.id !== id) }));
 
+  const reorderStaffMembers = (id: string, direction: "up" | "down") =>
+    setSiteContent(prev => {
+      const arr = [...prev.staffMembers];
+      const idx = arr.findIndex(s => s.id === id);
+      if (idx === -1) return prev;
+      const newIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= arr.length) return prev;
+      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+      return { ...prev, staffMembers: arr };
+    });
+
   const updatePriceItem = (category: keyof PriceList, index: number, updates: Partial<PriceItem>) =>
     setSiteContent(prev => ({
       ...prev,
@@ -885,7 +901,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       reviews, addReview, deleteReview,
       theme, setTheme, language, setLanguage,
       isLoaded,
-      siteContent, updateSiteContent, updateStoreProduct, addStoreProduct, deleteStoreProduct, addGalleryItem, deleteGalleryItem, addStaffMember, updateStaffMember, deleteStaffMember,
+      siteContent, updateSiteContent, updateStoreProduct, addStoreProduct, deleteStoreProduct, addGalleryItem, deleteGalleryItem, addStaffMember, updateStaffMember, deleteStaffMember, reorderStaffMembers,
       updatePriceItem, addPriceItem, deletePriceItem,
     }}>
       {children}

@@ -4,6 +4,7 @@ import { appointmentsTable, insertAppointmentSchema, staffUsersTable } from "@wo
 import { getAuth } from "@clerk/express";
 import { eq } from "drizzle-orm";
 import { sendSms } from "../../services/sms";
+import { sendWhatsApp } from "../../services/whatsapp";
 
 const router = Router();
 
@@ -32,27 +33,50 @@ router.post("/", async (req, res) => {
 });
 
 async function notifyStaff(appt: typeof appointmentsTable.$inferSelect) {
-  if (!appt.staff) return;
   const staffList = await db.select().from(staffUsersTable);
-  const staffUser = staffList.find(
-    s => s.name === appt.staff || appt.staff.toLowerCase().includes(s.name.split(" ")[0].toLowerCase())
-  );
-  if (!staffUser?.phone) return;
 
-  const msg =
+  const isFarketmez =
+    !appt.staff ||
+    appt.staff === "Farketmez" ||
+    appt.staff.trim() === "";
+
+  const targets = isFarketmez
+    ? staffList.filter(s => s.phone)
+    : staffList.filter(
+        s =>
+          s.phone &&
+          (s.name === appt.staff ||
+            appt.staff.toLowerCase().includes(s.name.split(" ")[0].toLowerCase()))
+      );
+
+  if (targets.length === 0) return;
+
+  const buildMsg = (staffName: string) =>
     `Yeni randevu!\n` +
+    `Personel: ${staffName}\n` +
     `Müşteri: ${appt.name}\n` +
     `Tarih: ${appt.date} ${appt.time}\n` +
     `Hizmet: ${appt.category}\n` +
     `Tel: ${appt.phone}`;
 
-  await sendSms({
-    to: staffUser.phone,
-    recipientName: staffUser.name,
-    message: msg,
-    type: "appointment",
-    appointmentId: appt.id,
-  });
+  await Promise.all(
+    targets.map(async staffUser => {
+      const msg = buildMsg(staffUser.name);
+      await sendSms({
+        to: staffUser.phone,
+        recipientName: staffUser.name,
+        message: msg,
+        type: "appointment",
+        appointmentId: appt.id,
+      });
+      await sendWhatsApp({
+        to: staffUser.phone,
+        recipientName: staffUser.name,
+        message: msg,
+        appointmentId: appt.id,
+      });
+    })
+  );
 }
 
 router.get("/my", async (req, res) => {
