@@ -405,7 +405,7 @@ function AdisyonTab() {
                     <SelectTrigger className="bg-background border-border">
                       <SelectValue placeholder="Seçin..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-60 overflow-y-auto">
                       {itemType === "hizmet" ? (
                         // Kategori bazlı gruplandırma
                         (Object.keys(PRICE_CAT_LABELS) as string[]).map(catKey => {
