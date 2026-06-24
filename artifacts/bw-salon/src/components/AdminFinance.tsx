@@ -16,33 +16,17 @@ import {
   Plus, Trash2, CheckCircle, Receipt, TrendingUp, TrendingDown, Wallet, ChevronDown, ChevronUp, X
 } from "lucide-react";
 
-const HIZMETLER = [
-  { name: "Saç Kesim (Kısa)", price: 500 },
-  { name: "Saç Kesim (Uzun)", price: 800 },
-  { name: "Dip Boya", price: 1200 },
-  { name: "Röfle / Balayage", price: 2500 },
-  { name: "Ombre", price: 5000 },
-  { name: "Keratin Bakım", price: 3000 },
-  { name: "Gelin Paketi", price: 12500 },
-  { name: "Nişan Paketi", price: 7500 },
-  { name: "Klasik Manikür", price: 350 },
-  { name: "Kalıcı Oje", price: 500 },
-  { name: "Tırnak Uzatma", price: 1200 },
-  { name: "Pedikür", price: 600 },
-  { name: "Tüm Vücut Ağda", price: 2000 },
-  { name: "Bölgesel Ağda", price: 450 },
-  { name: "Günlük Makyaj", price: 1000 },
-  { name: "Gece Makyajı", price: 1500 },
-];
+const PRICE_CAT_LABELS: Record<string, string> = {
+  sac: "Saç",
+  gelin: "Gelin",
+  manikur: "Manikür",
+  agda: "Ağda",
+  makyaj: "Makyaj",
+};
 
-const URUNLER = [
-  { name: "Luxe Şampuan", price: 450 },
-  { name: "Argan Saç Yağı", price: 380 },
-  { name: "Keratin Maske", price: 520 },
-  { name: "Kalıcı Oje Seti", price: 290 },
-  { name: "Tırnak Bakım Yağı", price: 220 },
-  { name: "Gül Yüz Bakım Kremi", price: 680 },
-];
+function parsePriceTL(s: string): number {
+  return Number(String(s).replace(/[^0-9,]/g, "").replace(",", ".")) || 0;
+}
 
 const GIDER_KATEGORILERI = [
   "Ürün / Malzeme Alımı",
@@ -285,6 +269,23 @@ function AdisyonTab() {
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Fiyat listesinden hizmetleri dinamik olarak oluştur
+  const hizmetOptions = useMemo(() => {
+    const list: { name: string; price: number; category: string }[] = [];
+    (Object.keys(siteContent.priceList) as (keyof typeof siteContent.priceList)[]).forEach(cat => {
+      siteContent.priceList[cat].forEach(item => {
+        const price = parsePriceTL(item.price);
+        if (item.name && price > 0) list.push({ name: item.name, price, category: PRICE_CAT_LABELS[cat] ?? cat });
+      });
+    });
+    return list;
+  }, [siteContent.priceList]);
+
+  // Mağaza ürünlerini dinamik olarak oluştur
+  const urunOptions = useMemo(() => {
+    return siteContent.storeProducts.map(p => ({ name: p.name, price: Number(p.price) }));
+  }, [siteContent.storeProducts]);
+
   // Form state
   const [customerName, setCustomerName] = useState("");
   const [staff, setStaff] = useState("");
@@ -293,10 +294,10 @@ function AdisyonTab() {
   const [note, setNote] = useState("");
   const [items, setItems] = useState<AdisyonItem[]>([]);
   const [itemType, setItemType] = useState<"hizmet" | "urun">("hizmet");
-  const [selectedItem, setSelectedItem] = useState(HIZMETLER[0].name);
+  const [selectedItem, setSelectedItem] = useState(() => hizmetOptions[0]?.name ?? "");
   const [itemQty, setItemQty] = useState(1);
 
-  const options = itemType === "hizmet" ? HIZMETLER : URUNLER;
+  const options = itemType === "hizmet" ? hizmetOptions : urunOptions;
 
   const addItem = () => {
     const opt = options.find(o => o.name === selectedItem);
@@ -380,7 +381,11 @@ function AdisyonTab() {
             <p className="text-xs text-muted-foreground font-medium">Hizmet / Ürün Ekle</p>
             <div className="flex flex-wrap gap-2 items-end">
               <div>
-                <Select value={itemType} onValueChange={(v) => { setItemType(v as "hizmet" | "urun"); setSelectedItem(v === "hizmet" ? HIZMETLER[0].name : URUNLER[0].name); }}>
+                <Select value={itemType} onValueChange={(v) => {
+                  const t = v as "hizmet" | "urun";
+                  setItemType(t);
+                  setSelectedItem(t === "hizmet" ? (hizmetOptions[0]?.name ?? "") : (urunOptions[0]?.name ?? ""));
+                }}>
                   <SelectTrigger className="bg-background border-border w-28">
                     <SelectValue />
                   </SelectTrigger>
@@ -391,16 +396,40 @@ function AdisyonTab() {
                 </Select>
               </div>
               <div className="flex-1 min-w-40">
-                <Select value={selectedItem} onValueChange={setSelectedItem}>
-                  <SelectTrigger className="bg-background border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {options.map(o => (
-                      <SelectItem key={o.name} value={o.name}>{o.name} — {fmt(o.price)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {options.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 px-3 border border-border rounded-md bg-background">
+                    {itemType === "hizmet" ? "Fiyat listesine hizmet ekleyin" : "Mağazaya ürün ekleyin"}
+                  </p>
+                ) : (
+                  <Select value={selectedItem} onValueChange={setSelectedItem}>
+                    <SelectTrigger className="bg-background border-border">
+                      <SelectValue placeholder="Seçin..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {itemType === "hizmet" ? (
+                        // Kategori bazlı gruplandırma
+                        (Object.keys(PRICE_CAT_LABELS) as string[]).map(catKey => {
+                          const catItems = hizmetOptions.filter(o => o.category === PRICE_CAT_LABELS[catKey]);
+                          if (catItems.length === 0) return null;
+                          return (
+                            <div key={catKey}>
+                              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 mt-1">
+                                {PRICE_CAT_LABELS[catKey]}
+                              </div>
+                              {catItems.map(o => (
+                                <SelectItem key={o.name} value={o.name}>{o.name} — {fmt(o.price)}</SelectItem>
+                              ))}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        urunOptions.map(o => (
+                          <SelectItem key={o.name} value={o.name}>{o.name} — {fmt(o.price)}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="w-20">
                 <Input type="number" min={1} value={itemQty} onChange={e => setItemQty(Math.max(1, Number(e.target.value)))} className="bg-background border-border" />
