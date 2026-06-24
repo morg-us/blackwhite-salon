@@ -434,25 +434,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const siteContentLoaded = useRef(false);
   const siteContentDirty = useRef(false);
   const siteContentSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSSEUpdate = useRef(false);
 
   // ── Load all data from API on mount ──────────────────────
   useEffect(() => {
     async function loadAll() {
       try {
-        const [content, apts, msgs, adis, txns, inv, sm, rvs, su, we, usr] = await Promise.all([
-          api<SiteContent | null>("/site-content").catch(() => null),
-          api<Record<string, unknown>[]>("/appointments").catch(() => []),
-          api<Record<string, unknown>[]>("/contact-messages").catch(() => []),
-          api<Adisyon[]>("/adisyonlar").catch(() => []),
-          api<Transaction[]>("/transactions").catch(() => []),
-          api<InventoryProduct[]>("/inventory").catch(() => []),
-          api<StockMovement[]>("/stock-movements").catch(() => []),
-          api<Record<string, unknown>[]>("/reviews").catch(() => []),
-          api<StaffUser[]>("/staff-users").catch(() => []),
-          api<WorkEntry[]>("/work-entries").catch(() => []),
-          api<SiteUser[]>("/site-users").catch(() => []),
-        ]);
-
+        // ── Step 1: site content önce yükle — sayfanın gerçek veriyle render olmasını sağla
+        const content = await api<SiteContent | null>("/site-content").catch(() => null);
         if (content) {
           const c = content as SiteContent;
           const merged: SiteContent = {
@@ -472,6 +461,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           try { localStorage.setItem("bw_site_content", JSON.stringify(merged)); } catch { /* empty */ }
         }
         siteContentLoaded.current = true;
+
+        // ── Step 2: geri kalan tüm veriler paralel
+        const [apts, msgs, adis, txns, inv, sm, rvs, su, we, usr] = await Promise.all([
+          api<Record<string, unknown>[]>("/appointments").catch(() => []),
+          api<Record<string, unknown>[]>("/contact-messages").catch(() => []),
+          api<Adisyon[]>("/adisyonlar").catch(() => []),
+          api<Transaction[]>("/transactions").catch(() => []),
+          api<InventoryProduct[]>("/inventory").catch(() => []),
+          api<StockMovement[]>("/stock-movements").catch(() => []),
+          api<Record<string, unknown>[]>("/reviews").catch(() => []),
+          api<StaffUser[]>("/staff-users").catch(() => []),
+          api<WorkEntry[]>("/work-entries").catch(() => []),
+          api<SiteUser[]>("/site-users").catch(() => []),
+        ]);
 
         if (Array.isArray(apts)) {
           setAppointments(apts.map(a => ({
@@ -585,6 +588,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!siteContentLoaded.current) return;
     if (!siteContentDirty.current) { siteContentDirty.current = true; return; }
+    // SSE'den gelen güncellemeler zaten sunucuda kayıtlı — tekrar kaydetme
+    if (isSSEUpdate.current) { isSSEUpdate.current = false; return; }
     const json = JSON.stringify(siteContent);
     try { localStorage.setItem("bw_site_content", json); } catch { /* empty */ }
     if (siteContentSaveTimer.current) clearTimeout(siteContentSaveTimer.current);
@@ -592,6 +597,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       api("/site-content", { method: "PUT", body: json }).catch(console.error);
     }, 800);
   }, [siteContent]);
+
+  // ── SSE: tüm tarayıcı/cihazlara anlık içerik senkronizasyonu ────
+  useEffect(() => {
+    function applySSEContent(raw: SiteContent) {
+      const c = raw;
+      const merged: SiteContent = {
+        ...DEFAULT_SITE_CONTENT,
+        ...raw,
+        galleryItems: Array.isArray(c.galleryItems) ? c.galleryItems : DEFAULT_SITE_CONTENT.galleryItems,
+        storeProducts: Array.isArray(c.storeProducts) ? c.storeProducts : DEFAULT_SITE_CONTENT.storeProducts,
+        staffMembers: Array.isArray(c.staffMembers) ? c.staffMembers : DEFAULT_SITE_CONTENT.staffMembers,
+        priceList: c.priceList ? { ...DEFAULT_PRICE_LIST, ...c.priceList } : DEFAULT_PRICE_LIST,
+        appointmentSettings: c.appointmentSettings
+          ? { ...DEFAULT_APPOINTMENT_SETTINGS, ...c.appointmentSettings, categories: Array.isArray(c.appointmentSettings.categories) ? c.appointmentSettings.categories : DEFAULT_APPOINTMENT_SETTINGS.categories }
+          : DEFAULT_APPOINTMENT_SETTINGS,
+      };
+      isSSEUpdate.current = true;
+      setSiteContent(merged);
+      try { localStorage.setItem("bw_site_content", JSON.stringify(merged)); } catch { /* empty */ }
+    }
+
+    const es = new EventSource("/api/site-content/events");
+    es.onmessage = (event) => {
+      try {
+        if (!event.data || event.data === "ping") return;
+        applySSEContent(JSON.parse(event.data) as SiteContent);
+      } catch { /* empty */ }
+    };
+    es.onerror = () => { /* tarayıcı otomatik yeniden bağlanır */ };
+    return () => es.close();
+  }, []);
 
   // ── Appointments ──────────────────────────────────────────
   const addAppointment = async (app: Omit<Appointment, "id">): Promise<void> => {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { StoreProvider } from "@/lib/store";
+import { StoreProvider, useStore } from "@/lib/store";
 import { ClerkProvider } from "@clerk/react";
 import { trTR, enUS, ruRU } from "@clerk/localizations";
 
@@ -24,6 +24,8 @@ import { StaffPanel } from "@/components/StaffPanel";
 type PageView = "main" | "admin" | "personel";
 
 function MainApp() {
+  const { isLoaded } = useStore();
+  const hasLocalCache = !!localStorage.getItem("bw_site_content");
   const [view, setView] = useState<PageView>("main");
 
   useEffect(() => {
@@ -38,6 +40,15 @@ function MainApp() {
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
+
+  if (!isLoaded && !hasLocalCache) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+        <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <p className="text-sm text-muted-foreground font-serif tracking-widest uppercase">Black White</p>
+      </div>
+    );
+  }
 
   if (view === "admin") return <AdminPanel />;
   if (view === "personel") return <StaffPanel />;
