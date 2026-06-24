@@ -50,9 +50,15 @@ export function Store() {
               <div key={product.id} className="bg-card rounded-2xl overflow-hidden border border-border flex flex-col group relative">
                 <div
                   className="w-full aspect-[4/3] flex items-center justify-center relative overflow-hidden bg-cover bg-center"
-                  style={{ background: product.imageUrl.startsWith("http") ? `url(${product.imageUrl})` : product.imageUrl, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                  style={{
+                    background: (product.imageUrl.startsWith("http") || product.imageUrl.startsWith("data:"))
+                      ? `url(${product.imageUrl}) center/cover`
+                      : (product.imageUrl || "var(--card)"),
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
                 >
-                  {!product.imageUrl.startsWith("http") && (
+                  {!product.imageUrl.startsWith("http") && !product.imageUrl.startsWith("data:") && (
                     <div className="w-32 h-32 rounded-full border border-white/10 flex items-center justify-center">
                       <span className="font-serif italic text-white/30 text-2xl">BW</span>
                     </div>
