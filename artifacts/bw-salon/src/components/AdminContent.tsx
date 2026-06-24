@@ -1,7 +1,24 @@
 import { useState, useRef, useEffect, Component } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, CSSProperties } from "react";
 import { useStore } from "@/lib/store";
 import type { StaffMember, ContactInfo, PriceList, StaffRole, AppointmentSettings, AppointmentCategory } from "@/lib/store";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -10,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Instagram, MessageCircle, Clock, Facebook, KeyRound, UserPlus, ShieldCheck, MessageSquare, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, GripVertical, CalendarCheck, ChevronUp, ChevronDown, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Edit2, Upload, Link as LinkIcon, Star, MapPin, Phone, Instagram, MessageCircle, Clock, Facebook, KeyRound, UserPlus, ShieldCheck, MessageSquare, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, GripVertical, CalendarCheck, ExternalLink } from "lucide-react";
 
 type SmsNotification = {
   id: number;
@@ -129,6 +146,70 @@ function SmsLog() {
   );
 }
 
+function SortableStaffItem({
+  s,
+  idx,
+  onEdit,
+  onDelete,
+}: {
+  s: StaffMember;
+  idx: number;
+  onEdit: (s: StaffMember) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: s.id });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-3 p-4 border border-border rounded-xl bg-background">
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground shrink-0 touch-none"
+        title="Sürükleyerek sırala"
+      >
+        <GripVertical className="w-5 h-5" />
+      </div>
+
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <Avatar className="w-12 h-12 border border-border shrink-0">
+          {s.imageUrl ? <AvatarImage src={s.imageUrl} className="object-cover" /> : null}
+          <AvatarFallback className="bg-muted text-primary font-serif">{s.initials}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <h4 className="font-medium text-sm">{s.name}</h4>
+            <span className="text-[10px] text-muted-foreground/60 shrink-0">#{idx + 1}</span>
+          </div>
+          <p className="text-xs text-muted-foreground truncate">{s.title} · {s.experience}</p>
+          <div className="flex items-center gap-1 mt-0.5">
+            <Star className="w-3 h-3 fill-accent text-accent" />
+            <span className="text-xs text-muted-foreground">{s.rating}</span>
+            {s.tags.length > 0 && (
+              <span className="text-xs text-muted-foreground ml-2 truncate">{s.tags.join(", ")}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-1.5 shrink-0">
+        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => onEdit(s)}>
+          <Edit2 className="w-3.5 h-3.5" />
+        </Button>
+        <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => onDelete(s.id)}>
+          <Trash2 className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   constructor(props: { children: ReactNode }) {
     super(props);
@@ -231,6 +312,21 @@ export function AdminContent() {
     staffUsers, addStaffUser, updateStaffUser, deleteStaffUser,
   } = useStore();
   const { toast } = useToast();
+
+  const staffSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleStaffDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = siteContent.staffMembers.findIndex(s => s.id === active.id);
+      const newIndex = siteContent.staffMembers.findIndex(s => s.id === over.id);
+      const reordered = arrayMove(siteContent.staffMembers, oldIndex, newIndex);
+      updateSiteContent({ staffMembers: reordered });
+    }
+  };
 
   const [heroUrl, setHeroUrl] = useState(siteContent.heroImageUrl);
   const [logoUrl, setLogoUrl] = useState(siteContent.logoImageUrl);
@@ -695,64 +791,32 @@ export function AdminContent() {
           </div>
         )}
 
-        <div className="grid gap-3">
-          {siteContent.staffMembers.map((s, idx) => (
-            <div key={s.id} className="flex items-center gap-3 p-4 border border-border rounded-xl bg-background">
-              <div className="flex flex-col gap-1 shrink-0">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-20"
-                  disabled={idx === 0}
-                  onClick={() => reorderStaffMembers(s.id, "up")}
-                  title="Yukarı taşı"
-                >
-                  <ChevronUp className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground disabled:opacity-20"
-                  disabled={idx === siteContent.staffMembers.length - 1}
-                  onClick={() => reorderStaffMembers(s.id, "down")}
-                  title="Aşağı taşı"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
-              </div>
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <GripVertical className="w-3.5 h-3.5" /> Tutup sürükleyerek sırayı değiştirin — değişiklik tüm site genelinde anında geçerli olur.
+        </p>
 
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar className="w-12 h-12 border border-border shrink-0">
-                  {s.imageUrl ? <AvatarImage src={s.imageUrl} className="object-cover" /> : null}
-                  <AvatarFallback className="bg-muted text-primary font-serif">{s.initials}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="font-medium text-sm">{s.name}</h4>
-                    <span className="text-[10px] text-muted-foreground/60 shrink-0">#{idx + 1}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">{s.title} · {s.experience}</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <Star className="w-3 h-3 fill-accent text-accent" />
-                    <span className="text-xs text-muted-foreground">{s.rating}</span>
-                    {s.tags.length > 0 && (
-                      <span className="text-xs text-muted-foreground ml-2 truncate">{s.tags.join(", ")}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-1.5 shrink-0">
-                <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => openStaffForm(s)}>
-                  <Edit2 className="w-3.5 h-3.5" />
-                </Button>
-                <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteStaffMember(s.id)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
+        <DndContext
+          sensors={staffSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleStaffDragEnd}
+        >
+          <SortableContext
+            items={siteContent.staffMembers.map(s => s.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="grid gap-3">
+              {siteContent.staffMembers.map((s, idx) => (
+                <SortableStaffItem
+                  key={s.id}
+                  s={s}
+                  idx={idx}
+                  onEdit={openStaffForm}
+                  onDelete={deleteStaffMember}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       </TabsContent>
 
       {/* ── FİYAT LİSTESİ ── */}
