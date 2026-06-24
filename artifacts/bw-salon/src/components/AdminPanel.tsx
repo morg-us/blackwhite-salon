@@ -32,14 +32,29 @@ export function AdminPanel() {
     if (auth === "true") setIsAuthenticated(true);
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === adminCreds.username && password === adminCreds.password) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem("bw_admin_auth", "true");
-      setError("");
-    } else {
-      setError("Hatalı kullanıcı adı veya şifre.");
+    setLoginLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/site-content/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json() as { ok: boolean };
+      if (data.ok) {
+        setIsAuthenticated(true);
+        sessionStorage.setItem("bw_admin_auth", "true");
+      } else {
+        setError("Hatalı kullanıcı adı veya şifre.");
+      }
+    } catch {
+      setError("Sunucuya bağlanılamadı, lütfen tekrar deneyin.");
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -75,7 +90,9 @@ export function AdminPanel() {
             <Input placeholder="Kullanıcı Adı" value={username} onChange={e => setUsername(e.target.value)} className="bg-background border-border" data-testid="input-username" />
             <Input type="password" placeholder="Şifre" value={password} onChange={e => setPassword(e.target.value)} className="bg-background border-border" data-testid="input-password" />
             {error && <p className="text-destructive text-sm text-center">{error}</p>}
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" data-testid="btn-login">Giriş Yap</Button>
+            <Button type="submit" disabled={loginLoading} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" data-testid="btn-login">
+              {loginLoading ? "Doğrulanıyor..." : "Giriş Yap"}
+            </Button>
             <Button type="button" variant="ghost" className="w-full" onClick={() => window.location.hash = ""}>Ana Sayfaya Dön</Button>
           </form>
         </div>

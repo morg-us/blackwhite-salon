@@ -49,6 +49,34 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.post("/admin-login", async (req, res) => {
+  try {
+    const { username, password } = req.body as { username?: string; password?: string };
+    if (!username || !password) return res.status(400).json({ ok: false });
+
+    const rows = await db.select().from(siteContentTable).limit(1);
+    if (rows.length === 0) {
+      // DB henüz boş — varsayılan kimlik bilgilerini kullan
+      const ok = username === "admin" && password === "admin123";
+      return res.json({ ok });
+    }
+
+    const content = JSON.parse(rows[0].content) as Record<string, unknown>;
+    const creds = content.adminCredentials as { username: string; password: string } | undefined;
+
+    if (!creds) {
+      // DB kaydı var ama adminCredentials alanı yok — varsayılan
+      const ok = username === "admin" && password === "admin123";
+      return res.json({ ok });
+    }
+
+    const ok = username === creds.username && password === creds.password;
+    res.json({ ok });
+  } catch {
+    res.status(500).json({ ok: false });
+  }
+});
+
 router.put("/", async (req, res) => {
   try {
     const content = JSON.stringify(req.body);
