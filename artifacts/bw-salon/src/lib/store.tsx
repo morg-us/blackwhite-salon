@@ -441,6 +441,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const siteContentDirty = useRef(false);
   const siteContentSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSSEUpdate = useRef(false);
+  const isImmediateSave = useRef(false);
+  const siteContentRef = useRef<SiteContent>(siteContent);
 
   // ── Load all data from API on mount ──────────────────────
   useEffect(() => {
@@ -597,10 +599,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!siteContentDirty.current) { siteContentDirty.current = true; return; }
     // SSE'den gelen güncellemeler zaten sunucuda kayıtlı — tekrar kaydetme
     if (isSSEUpdate.current) { isSSEUpdate.current = false; return; }
+    // Anlık kaydetme işlemi zaten gerçekleşti — useEffect'i atla
+    if (isImmediateSave.current) { isImmediateSave.current = false; return; }
+    siteContentRef.current = siteContent;
     const json = JSON.stringify(siteContent);
     try { localStorage.setItem("bw_site_content", json); } catch { /* empty */ }
     if (siteContentSaveTimer.current) clearTimeout(siteContentSaveTimer.current);
     siteContentSaveTimer.current = setTimeout(() => {
+      siteContentSaveTimer.current = null;
       api("/site-content", { method: "PUT", body: json }).catch(console.error);
     }, 150);
   }, [siteContent]);
@@ -608,6 +614,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // ── SSE: tüm tarayıcı/cihazlara anlık içerik senkronizasyonu ────
   useEffect(() => {
     function applySSEContent(raw: SiteContent) {
+      // Bekleyen yerel değişiklik varsa SSE'yi yoksay — kaybetme riski var
+      if (siteContentSaveTimer.current !== null) return;
       const c = raw;
       const merged: SiteContent = {
         ...DEFAULT_SITE_CONTENT,
@@ -621,6 +629,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : DEFAULT_APPOINTMENT_SETTINGS,
       };
       isSSEUpdate.current = true;
+      siteContentRef.current = merged;
       setSiteContent(merged);
       try { localStorage.setItem("bw_site_content", JSON.stringify(merged)); } catch { /* empty */ }
     }
@@ -887,8 +896,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const addStoreProduct = (p: Omit<StoreProduct, "id">) =>
     setSiteContent(prev => ({ ...prev, storeProducts: [...prev.storeProducts, { ...p, id: uid() }] }));
 
-  const deleteStoreProduct = (id: string) =>
-    setSiteContent(prev => ({ ...prev, storeProducts: prev.storeProducts.filter(p => p.id !== id) }));
+  const deleteStoreProduct = (id: string) => {
+    const next: SiteContent = { ...siteContentRef.current, storeProducts: siteContentRef.current.storeProducts.filter(p => p.id !== id) };
+    isImmediateSave.current = true;
+    siteContentRef.current = next;
+    setSiteContent(next);
+    if (siteContentSaveTimer.current) { clearTimeout(siteContentSaveTimer.current); siteContentSaveTimer.current = null; }
+    const json = JSON.stringify(next);
+    try { localStorage.setItem("bw_site_content", json); } catch { /* empty */ }
+    api("/site-content", { method: "PUT", body: json }).catch(console.error);
+  };
 
   const addGalleryItem = (item: Omit<GalleryItem, "id">) =>
     setSiteContent(prev => ({ ...prev, galleryItems: [...prev.galleryItems, { ...item, id: uid() }] }));

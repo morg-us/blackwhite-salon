@@ -77,6 +77,30 @@ router.post("/admin-login", async (req, res) => {
   }
 });
 
+router.patch("/admin-credentials", async (req, res) => {
+  try {
+    const { username, password } = req.body as { username?: string; password?: string };
+    if (!username || !password) return res.status(400).json({ error: "username and password required" });
+
+    const rows = await db.select().from(siteContentTable).limit(1);
+    if (rows.length === 0) return res.status(404).json({ error: "No site content" });
+
+    const content = JSON.parse(rows[0].content) as Record<string, unknown>;
+    content.adminCredentials = { username, password };
+    const json = JSON.stringify(content);
+
+    const [updated] = await db
+      .update(siteContentTable)
+      .set({ content: json, updatedAt: new Date() })
+      .where(eq(siteContentTable.id, rows[0].id))
+      .returning();
+    broadcastContent(updated.content);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Failed to update admin credentials" });
+  }
+});
+
 router.put("/", async (req, res) => {
   try {
     const content = JSON.stringify(req.body);

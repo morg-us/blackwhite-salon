@@ -398,7 +398,14 @@ export function AdminPanel() {
               <AdminCredentials
                 currentUsername={adminCreds.username}
                 currentPassword={adminCreds.password}
-                onSave={(u, p) => updateSiteContent({ adminCredentials: { username: u, password: p } })}
+                onSave={async (u, p) => {
+                  updateSiteContent({ adminCredentials: { username: u, password: p } });
+                  await fetch("/api/site-content/admin-credentials", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username: u, password: p }),
+                  }).catch(console.error);
+                }}
               />
             </div>
           </TabsContent>
