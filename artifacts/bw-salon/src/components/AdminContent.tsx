@@ -292,7 +292,7 @@ function ImageInputField({
   );
 }
 
-const EMPTY_PRODUCT = { id: "", name: "", description: "", price: "", imageUrl: "" };
+const EMPTY_PRODUCT = { id: "", name: "", description: "", price: "", imageUrl: "", inventoryProductId: "" };
 const EMPTY_STAFF: Omit<StaffMember, "id"> = { name: "", title: "", experience: "", rating: 5.0, initials: "", tags: [], imageUrl: "" };
 
 const SAC_SUBCATS = ["ombre", "sombre", "kesim", "boyama", "röfle", "keratin", "gelin"];
@@ -310,6 +310,7 @@ export function AdminContent() {
     addStaffMember, updateStaffMember, deleteStaffMember, reorderStaffMembers,
     updatePriceItem, addPriceItem, deletePriceItem,
     staffUsers, addStaffUser, updateStaffUser, deleteStaffUser,
+    inventory,
   } = useStore();
   const { toast } = useToast();
 
@@ -353,10 +354,11 @@ export function AdminContent() {
 
   const handleProductSubmit = () => {
     if (!productForm.name || !productForm.price) return;
+    const invId = productForm.inventoryProductId || undefined;
     if (productForm.id) {
-      updateStoreProduct(productForm.id, { ...productForm, price: Number(productForm.price) });
+      updateStoreProduct(productForm.id, { ...productForm, price: Number(productForm.price), inventoryProductId: invId });
     } else {
-      addStoreProduct({ name: productForm.name, description: productForm.description, price: Number(productForm.price), imageUrl: productForm.imageUrl });
+      addStoreProduct({ name: productForm.name, description: productForm.description, price: Number(productForm.price), imageUrl: productForm.imageUrl, inventoryProductId: invId });
     }
     setShowProductForm(false);
     setProductForm(EMPTY_PRODUCT);
@@ -625,6 +627,20 @@ export function AdminContent() {
                   )}
                 </div>
               </div>
+              <div className="md:col-span-2 space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Stok Takibi (opsiyonel)</p>
+                <select
+                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm"
+                  value={productForm.inventoryProductId}
+                  onChange={e => setProductForm(p => ({ ...p, inventoryProductId: e.target.value }))}
+                >
+                  <option value="">— Stok ürünüyle bağlama —</option>
+                  {inventory.map(inv => (
+                    <option key={inv.id} value={inv.id}>{inv.name} (Stok: {inv.stock} {inv.unit})</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">Seçilirse sipariş verildiğinde stok otomatik düşer ve gelir kaydedilir.</p>
+              </div>
             </div>
             <div className="flex gap-2">
               <Button onClick={handleProductSubmit} className="bg-[#b84d5b] text-white">Kaydet</Button>
@@ -647,7 +663,7 @@ export function AdminContent() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="icon" variant="outline" onClick={() => { setProductForm({ id: p.id, name: p.name, description: p.description, price: String(p.price), imageUrl: p.imageUrl }); setShowProductForm(true); }}>
+                <Button size="icon" variant="outline" onClick={() => { setProductForm({ id: p.id, name: p.name, description: p.description, price: String(p.price), imageUrl: p.imageUrl, inventoryProductId: p.inventoryProductId ?? "" }); setShowProductForm(true); }}>
                   <Edit2 className="w-4 h-4" />
                 </Button>
                 <Button size="icon" variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => deleteStoreProduct(p.id)}>

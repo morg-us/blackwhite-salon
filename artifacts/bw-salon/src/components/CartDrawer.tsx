@@ -4,11 +4,11 @@ import { useStore } from "@/lib/store";
 import { Minus, Plus, Trash2, MessageCircle } from "lucide-react";
 
 export function CartDrawer() {
-  const { isCartOpen, setIsCartOpen, cart, updateCartItem, removeFromCart, siteContent } = useStore();
+  const { isCartOpen, setIsCartOpen, cart, updateCartItem, removeFromCart, clearCart, addOrder, siteContent, refreshInventory } = useStore();
 
   const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-  const handleWhatsAppOrder = () => {
+  const handleWhatsAppOrder = async () => {
     if (cart.length === 0) return;
 
     const lines = cart.map(item => `• ${item.name} x${item.quantity} — ${item.price * item.quantity} TL`).join("\n");
@@ -20,6 +20,36 @@ export function CartDrawer() {
       : `https://wa.me/?text=${encodeURIComponent(message)}`;
 
     window.open(url, "_blank");
+
+    // Stokla eşleşmiş ürünleri server'da düş
+    const deductItems = cart
+      .filter(item => item.inventoryProductId)
+      .map(item => ({
+        inventoryProductId: item.inventoryProductId!,
+        productName: item.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+      }));
+
+    if (deductItems.length > 0) {
+      fetch("/api/inventory/sale-deduct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: deductItems }),
+      })
+        .then(() => refreshInventory())
+        .catch(console.error);
+    }
+
+    // Siparişi kaydet
+    addOrder({
+      customerName: "Online Müşteri",
+      items: cart.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price, image: i.image })),
+      total,
+    });
+
+    clearCart();
+    setIsCartOpen(false);
   };
 
   return (

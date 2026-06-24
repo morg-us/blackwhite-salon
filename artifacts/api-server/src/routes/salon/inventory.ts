@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { inventoryTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { inventoryTable, stockMovementsTable, transactionsTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 const router = Router();
 
@@ -77,6 +78,60 @@ router.delete("/:id", async (req, res) => {
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to delete inventory item" });
+  }
+});
+
+// Mağaza siparişinde stok düş + hareket + gelir kaydı oluştur
+router.post("/sale-deduct", async (req, res) => {
+  type SaleItem = { inventoryProductId: string; productName: string; quantity: number; unitPrice: number };
+  const items = req.body.items as SaleItem[];
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "items required" });
+  }
+
+  try {
+    const results: Record<string, unknown>[] = [];
+
+    for (const item of items) {
+      const rows = await db.select().from(inventoryTable).where(eq(inventoryTable.id, item.inventoryProductId));
+      if (rows.length === 0) continue;
+
+      const current = rows[0];
+      const newStock = Math.max(0, current.stock - item.quantity);
+
+      await db.update(inventoryTable)
+        .set({ stock: newStock })
+        .where(eq(inventoryTable.id, item.inventoryProductId));
+
+      const movementId = randomUUID();
+      await db.insert(stockMovementsTable).values({
+        id: movementId,
+        productId: item.inventoryProductId,
+        productName: current.name,
+        barcode: current.barcode,
+        type: "cikis",
+        quantity: item.quantity,
+        reason: "Mağaza satışı",
+        note: "",
+        stockAfter: newStock,
+      });
+
+      const txId = randomUUID();
+      await db.insert(transactionsTable).values({
+        id: txId,
+        type: "gelir",
+        category: "Ürün Satışı",
+        description: `${current.name} x${item.quantity}`,
+        amount: String(item.unitPrice * item.quantity),
+        paymentMethod: "nakit",
+      });
+
+      results.push({ id: item.inventoryProductId, newStock });
+    }
+
+    res.json({ ok: true, results });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to process sale" });
   }
 });
 

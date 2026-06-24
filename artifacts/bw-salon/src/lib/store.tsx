@@ -4,7 +4,7 @@ import { useUser } from "@clerk/react";
 export type AppointmentStatus = "pending" | "came" | "no_show";
 export type Appointment = { id: string; name: string; phone: string; category: string; staff: string; date: string; time: string; status: AppointmentStatus; };
 export type Message = { id: string; name: string; email: string; message: string; };
-export type CartItem = { id: string; name: string; price: number; quantity: number; image: string };
+export type CartItem = { id: string; name: string; price: number; quantity: number; image: string; inventoryProductId?: string };
 export type Order = { id: string; items: CartItem[]; total: number; date: string; customerName: string; userId?: string; userEmail?: string; };
 
 export type AdisyonItem = {
@@ -113,6 +113,7 @@ export type StoreProduct = {
   description: string;
   price: number;
   imageUrl: string;
+  inventoryProductId?: string;
 };
 
 export type GalleryItem = {
@@ -305,6 +306,7 @@ type StoreContextType = {
   addInventoryProduct: (p: Omit<InventoryProduct, "id">) => void;
   updateInventoryProduct: (id: string, updates: Partial<InventoryProduct>) => void;
   deleteInventoryProduct: (id: string) => void;
+  refreshInventory: () => void;
   stockMovements: StockMovement[];
   addStockMovement: (m: Omit<StockMovement, "id" | "date" | "stockAfter">) => void;
 
@@ -733,6 +735,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     api(`/inventory/${id}`, { method: "PUT", body: JSON.stringify(updates) }).catch(console.error);
   };
 
+  const refreshInventory = () => {
+    api<InventoryProduct[]>("/inventory").then(data => {
+      if (Array.isArray(data)) setInventory(data);
+    }).catch(console.error);
+  };
+
   const deleteInventoryProduct = (id: string) => {
     setInventory(prev => prev.filter(p => p.id !== id));
     setStockMovements(prev => prev.filter(m => m.productId !== id));
@@ -934,7 +942,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       orders, addOrder,
       adisyonlar, addAdisyon, updateAdisyon, deleteAdisyon,
       transactions, addTransaction, deleteTransaction,
-      inventory, addInventoryProduct, updateInventoryProduct, deleteInventoryProduct,
+      inventory, addInventoryProduct, updateInventoryProduct, deleteInventoryProduct, refreshInventory,
       stockMovements, addStockMovement,
       users, currentUser, registerUser, loginUser, logoutUser, updateUser, isAuthModalOpen, setIsAuthModalOpen, isProfileModalOpen, setIsProfileModalOpen,
       staffUsers, addStaffUser, updateStaffUser, deleteStaffUser, loginStaffUser, currentStaffUser, setCurrentStaffUser,
