@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { LogOut, Users, ShoppingBag, Calendar, MessageSquare, TrendingUp, Star, Trash2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { LogOut, Users, ShoppingBag, Calendar, MessageSquare, TrendingUp, Star, Trash2, CheckCircle2, XCircle, Clock, KeyRound, ShieldCheck } from "lucide-react";
 import type { AppointmentStatus } from "@/lib/store";
 
 export function AdminPanel() {
@@ -18,7 +18,9 @@ export function AdminPanel() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const { appointments, messages, orders, users, reviews, deleteReview, transactions, updateAppointmentStatus, siteContent } = useStore();
+  const { appointments, messages, orders, users, reviews, deleteReview, transactions, updateAppointmentStatus, siteContent, updateSiteContent } = useStore();
+
+  const adminCreds = siteContent.adminCredentials ?? { username: "admin", password: "admin123" };
 
   const getCategoryLabel = (key: string) => {
     const found = siteContent.appointmentSettings.categories.find(c => c.key === key);
@@ -32,7 +34,7 @@ export function AdminPanel() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === "admin" && password === "admin123") {
+    if (username === adminCreds.username && password === adminCreds.password) {
       setIsAuthenticated(true);
       sessionStorage.setItem("bw_admin_auth", "true");
       setError("");
@@ -130,6 +132,7 @@ export function AdminPanel() {
               { value: "yorumlar", label: `Yorumlar (${reviews.length})` },
               { value: "mesajlar", label: `Mesajlar (${messages.length})` },
               { value: "siparisler", label: `Siparişler (${orders.length})` },
+              { value: "hesap", label: "🔑 Admin Hesabı" },
             ].map(tab => (
               <TabsTrigger
                 key={tab.value}
@@ -371,8 +374,145 @@ export function AdminPanel() {
               </Table>
             </div>
           </TabsContent>
+
+          {/* ── Admin Hesabı ── */}
+          <TabsContent value="hesap">
+            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg">
+              <AdminCredentials
+                currentUsername={adminCreds.username}
+                currentPassword={adminCreds.password}
+                onSave={(u, p) => updateSiteContent({ adminCredentials: { username: u, password: p } })}
+              />
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
+    </div>
+  );
+}
+
+function AdminCredentials({
+  currentUsername,
+  currentPassword,
+  onSave,
+}: {
+  currentUsername: string;
+  currentPassword: string;
+  onSave: (username: string, password: string) => void;
+}) {
+  const [curPass, setCurPass] = useState("");
+  const [newUser, setNewUser] = useState(currentUsername);
+  const [newPass, setNewPass] = useState("");
+  const [newPassConfirm, setNewPassConfirm] = useState("");
+  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsg(null);
+
+    if (curPass !== currentPassword) {
+      setMsg({ type: "err", text: "Mevcut şifre yanlış." });
+      return;
+    }
+    if (!newUser.trim()) {
+      setMsg({ type: "err", text: "Kullanıcı adı boş olamaz." });
+      return;
+    }
+    if (newPass && newPass !== newPassConfirm) {
+      setMsg({ type: "err", text: "Yeni şifreler eşleşmiyor." });
+      return;
+    }
+    if (newPass && newPass.length < 6) {
+      setMsg({ type: "err", text: "Yeni şifre en az 6 karakter olmalıdır." });
+      return;
+    }
+
+    onSave(newUser.trim(), newPass || currentPassword);
+    setCurPass("");
+    setNewPass("");
+    setNewPassConfirm("");
+    setMsg({ type: "ok", text: "Admin hesabı güncellendi. Yeni bilgilerle giriş yapabilirsiniz." });
+  };
+
+  return (
+    <div className="max-w-md mx-auto space-y-6">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+          <KeyRound className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="font-semibold text-base">Admin Hesabı</h2>
+          <p className="text-xs text-muted-foreground">Giriş kullanıcı adı ve şifreyi buradan değiştirin.</p>
+        </div>
+      </div>
+
+      <div className="p-4 rounded-xl bg-background border border-border flex items-center gap-3">
+        <ShieldCheck className="w-4 h-4 text-green-400 shrink-0" />
+        <div>
+          <p className="text-xs text-muted-foreground">Mevcut kullanıcı adı</p>
+          <p className="font-medium text-sm">{currentUsername}</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSave} className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Mevcut Şifre (doğrulama)</label>
+          <Input
+            type="password"
+            placeholder="Mevcut şifrenizi girin"
+            value={curPass}
+            onChange={e => setCurPass(e.target.value)}
+            required
+            className="bg-background border-border"
+          />
+        </div>
+
+        <div className="h-px bg-border" />
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Yeni Kullanıcı Adı</label>
+          <Input
+            placeholder="Yeni kullanıcı adı"
+            value={newUser}
+            onChange={e => setNewUser(e.target.value)}
+            className="bg-background border-border"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Yeni Şifre <span className="text-muted-foreground/50 normal-case font-normal">(değiştirmek istemiyorsanız boş bırakın)</span></label>
+          <Input
+            type="password"
+            placeholder="Yeni şifre (min. 6 karakter)"
+            value={newPass}
+            onChange={e => setNewPass(e.target.value)}
+            className="bg-background border-border"
+          />
+        </div>
+
+        {newPass && (
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Yeni Şifre Tekrar</label>
+            <Input
+              type="password"
+              placeholder="Yeni şifreyi tekrar girin"
+              value={newPassConfirm}
+              onChange={e => setNewPassConfirm(e.target.value)}
+              className="bg-background border-border"
+            />
+          </div>
+        )}
+
+        {msg && (
+          <p className={`text-sm px-3 py-2 rounded-lg ${msg.type === "ok" ? "bg-green-500/10 text-green-400" : "bg-destructive/10 text-destructive"}`}>
+            {msg.text}
+          </p>
+        )}
+
+        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+          <KeyRound className="w-4 h-4 mr-2" /> Hesabı Güncelle
+        </Button>
+      </form>
     </div>
   );
 }

@@ -184,6 +184,7 @@ export type SiteContent = {
   contactInfo: ContactInfo;
   priceList: PriceList;
   appointmentSettings: AppointmentSettings;
+  adminCredentials: { username: string; password: string };
 };
 
 const DEFAULT_PRICE_LIST: PriceList = {
@@ -271,6 +272,7 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
   },
   priceList: DEFAULT_PRICE_LIST,
   appointmentSettings: DEFAULT_APPOINTMENT_SETTINGS,
+  adminCredentials: { username: "admin", password: "admin123" },
 };
 
 const USER_COLORS = ["#b84d5b", "#bd8c74", "#e8a5b2", "#4caf7d", "#54352b"];
