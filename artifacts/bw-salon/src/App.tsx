@@ -24,8 +24,7 @@ import { StaffPanel } from "@/components/StaffPanel";
 type PageView = "main" | "admin" | "personel";
 
 function MainApp() {
-  const { isLoaded } = useStore();
-  const hasLocalCache = !!localStorage.getItem("bw_site_content");
+  const { siteContentReady } = useStore();
   const [view, setView] = useState<PageView>("main");
 
   useEffect(() => {
@@ -41,7 +40,7 @@ function MainApp() {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  if (!isLoaded && !hasLocalCache) {
+  if (!siteContentReady) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />

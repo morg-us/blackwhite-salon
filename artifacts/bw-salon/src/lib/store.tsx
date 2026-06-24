@@ -277,6 +277,7 @@ const USER_COLORS = ["#b84d5b", "#bd8c74", "#e8a5b2", "#4caf7d", "#54352b"];
 
 type StoreContextType = {
   isLoaded: boolean;
+  siteContentReady: boolean;
   appointments: Appointment[];
   addAppointment: (app: Omit<Appointment, "id">) => Promise<void>;
   updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
@@ -380,6 +381,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [siteContentReady, setSiteContentReady] = useState(false);
 
   const [users, setUsers] = useState<SiteUser[]>([]);
   const [currentUser, setCurrentUser] = useState<SiteUser | null>(null);
@@ -461,6 +463,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           try { localStorage.setItem("bw_site_content", JSON.stringify(merged)); } catch { /* empty */ }
         }
         siteContentLoaded.current = true;
+        setSiteContentReady(true);
 
         // ── Step 2: geri kalan tüm veriler paralel
         const [apts, msgs, adis, txns, inv, sm, rvs, su, we, usr] = await Promise.all([
@@ -595,7 +598,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (siteContentSaveTimer.current) clearTimeout(siteContentSaveTimer.current);
     siteContentSaveTimer.current = setTimeout(() => {
       api("/site-content", { method: "PUT", body: json }).catch(console.error);
-    }, 800);
+    }, 150);
   }, [siteContent]);
 
   // ── SSE: tüm tarayıcı/cihazlara anlık içerik senkronizasyonu ────
@@ -937,6 +940,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       reviews, addReview, deleteReview,
       theme, setTheme, language, setLanguage,
       isLoaded,
+      siteContentReady,
       siteContent, updateSiteContent, updateStoreProduct, addStoreProduct, deleteStoreProduct, addGalleryItem, deleteGalleryItem, addStaffMember, updateStaffMember, deleteStaffMember, reorderStaffMembers,
       updatePriceItem, addPriceItem, deletePriceItem,
     }}>
