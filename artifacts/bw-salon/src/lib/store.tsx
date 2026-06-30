@@ -14,6 +14,7 @@ export type AdisyonItem = {
   quantity: number;
   unitPrice: number;
   total: number;
+  inventoryProductId?: string;
 };
 
 export type Adisyon = {

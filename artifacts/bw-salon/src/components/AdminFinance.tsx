@@ -310,8 +310,13 @@ function AdisyonTab() {
           : i
       ));
     } else {
+      // Mağaza ürünü ise inventoryProductId'yi de ekle
+      const invId = itemType === "urun"
+        ? siteContent.storeProducts.find(p => p.name === opt.name)?.inventoryProductId
+        : undefined;
       setItems(prev => [...prev, {
-        id: uid(), type: itemType, name: opt.name, quantity: itemQty, unitPrice: opt.price, total: itemQty * opt.price
+        id: uid(), type: itemType, name: opt.name, quantity: itemQty, unitPrice: opt.price, total: itemQty * opt.price,
+        ...(invId ? { inventoryProductId: invId } : {}),
       }]);
     }
   };

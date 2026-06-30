@@ -22,17 +22,19 @@ function mapRow(row: typeof adisyonlarTable.$inferSelect) {
 }
 
 // When an adisyon closes, decrease inventory for any "urun" items and track COGS.
-async function processStockOnClose(adisyonId: string, items: Array<{ id: string; type: string; name: string; quantity: number; unitPrice: number; total: number }>, paymentMethod: string) {
+async function processStockOnClose(adisyonId: string, items: Array<{ id: string; type: string; name: string; quantity: number; unitPrice: number; total: number; inventoryProductId?: string }>, paymentMethod: string) {
   const urunItems = items.filter(i => i.type === "urun");
   if (!urunItems.length) return;
 
   for (const item of urunItems) {
-    // Find matching inventory product by name (case-insensitive)
-    const products = await db
-      .select()
-      .from(inventoryTable)
-      .where(sql`lower(${inventoryTable.name}) = lower(${item.name})`)
-      .limit(1);
+    // Önce doğrudan inventoryProductId ile ara, yoksa isim bazlı fallback
+    let products: (typeof inventoryTable.$inferSelect)[] = [];
+    if (item.inventoryProductId) {
+      products = await db.select().from(inventoryTable).where(eq(inventoryTable.id, item.inventoryProductId)).limit(1);
+    }
+    if (!products.length) {
+      products = await db.select().from(inventoryTable).where(sql`lower(${inventoryTable.name}) = lower(${item.name})`).limit(1);
+    }
 
     if (!products.length) continue;
     const product = products[0];
