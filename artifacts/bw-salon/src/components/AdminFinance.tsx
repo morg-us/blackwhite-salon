@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useStore, Adisyon, AdisyonItem, Transaction, InventoryProduct, StockMovement } from "@/lib/store";
 
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from "recharts";
 import {
-  Plus, Trash2, CheckCircle, Receipt, TrendingUp, TrendingDown, Wallet, ChevronDown, ChevronUp, X
+  Plus, Trash2, CheckCircle, Receipt, TrendingUp, TrendingDown, Wallet, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, CalendarDays
 } from "lucide-react";
 
 const PRICE_CAT_LABELS: Record<string, string> = {
@@ -74,6 +74,169 @@ function KpiCard({ label, value, icon, color }: { label: string; value: string; 
         <p className="text-xs text-muted-foreground mb-1">{label}</p>
         <p className="text-xl font-bold">{value}</p>
       </div>
+    </div>
+  );
+}
+
+// ─── Günlük Takvim ───────────────────────────────────────────────────────────
+const HAFTANIN_GUNLERI = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
+function DailyCalendar({ transactions }: { transactions: Transaction[] }) {
+  const today = new Date();
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(today.getMonth());
+  const [selectedDay, setSelectedDay] = useState<string | null>(
+    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+  );
+
+  const dayKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  // Günlük gelir/gider haritası
+  const dailyMap = useMemo(() => {
+    const map: Record<string, { gelir: number; gider: number; txns: Transaction[] }> = {};
+    transactions.forEach(t => {
+      const k = dayKey(new Date(t.date));
+      if (!map[k]) map[k] = { gelir: 0, gider: 0, txns: [] };
+      if (t.type === "gelir") map[k].gelir += t.amount;
+      else map[k].gider += t.amount;
+      map[k].txns.push(t);
+    });
+    return map;
+  }, [transactions]);
+
+  // Takvim hücrelerini oluştur
+  const cells = useMemo(() => {
+    const firstDay = new Date(calYear, calMonth, 1);
+    // Pazartesi bazlı offset (0=Pzt … 6=Paz)
+    let startOffset = firstDay.getDay() - 1;
+    if (startOffset < 0) startOffset = 6;
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const arr: (number | null)[] = Array(startOffset).fill(null);
+    for (let d = 1; d <= daysInMonth; d++) arr.push(d);
+    while (arr.length % 7 !== 0) arr.push(null);
+    return arr;
+  }, [calYear, calMonth]);
+
+  const prevMonth = useCallback(() => {
+    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); }
+    else setCalMonth(m => m - 1);
+  }, [calMonth]);
+
+  const nextMonth = useCallback(() => {
+    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0); }
+    else setCalMonth(m => m + 1);
+  }, [calMonth]);
+
+  const selectedData = selectedDay ? dailyMap[selectedDay] : null;
+  const todayKey = dayKey(today);
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+      {/* Başlık + navigasyon */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Günlük Gelir Takvimi</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={prevMonth} className="p-1 rounded hover:bg-muted transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm font-medium min-w-[120px] text-center">
+            {format(new Date(calYear, calMonth, 1), "MMMM yyyy", { locale: tr })}
+          </span>
+          <button onClick={nextMonth} className="p-1 rounded hover:bg-muted transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Gün başlıkları */}
+      <div className="grid grid-cols-7 gap-1">
+        {HAFTANIN_GUNLERI.map(g => (
+          <div key={g} className="text-center text-xs text-muted-foreground font-medium py-1">{g}</div>
+        ))}
+
+        {/* Takvim hücreleri */}
+        {cells.map((day, idx) => {
+          if (!day) return <div key={`empty-${idx}`} />;
+          const k = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const data = dailyMap[k];
+          const isToday = k === todayKey;
+          const isSelected = k === selectedDay;
+          const hasGelir = data && data.gelir > 0;
+          const hasGider = data && data.gider > 0;
+
+          return (
+            <button
+              key={k}
+              onClick={() => setSelectedDay(k)}
+              className={[
+                "relative flex flex-col items-center justify-start pt-1 rounded-lg min-h-[52px] text-xs transition-all border",
+                isSelected
+                  ? "border-[#b84d5b] bg-[#b84d5b]/10"
+                  : isToday
+                    ? "border-[#b84d5b]/40 bg-muted/40"
+                    : "border-transparent hover:bg-muted/60",
+              ].join(" ")}
+            >
+              <span className={[
+                "font-semibold leading-none",
+                isToday ? "text-[#b84d5b]" : "",
+              ].join(" ")}>{day}</span>
+              {hasGelir && (
+                <span className="mt-0.5 text-[10px] font-medium leading-none" style={{ color: PALETTE.green }}>
+                  +{data.gelir >= 1000 ? (data.gelir / 1000).toFixed(1) + "k" : data.gelir}
+                </span>
+              )}
+              {hasGider && (
+                <span className="text-[10px] leading-none" style={{ color: PALETTE.red }}>
+                  -{data.gider >= 1000 ? (data.gider / 1000).toFixed(1) + "k" : data.gider}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Seçili gün detayı */}
+      {selectedDay && (
+        <div className="border-t border-border pt-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold">
+              {format(new Date(selectedDay + "T12:00:00"), "d MMMM yyyy, EEEE", { locale: tr })}
+            </p>
+            <div className="flex gap-4 text-xs">
+              <span style={{ color: PALETTE.green }}>Gelir: {fmt(selectedData?.gelir ?? 0)}</span>
+              <span style={{ color: PALETTE.red }}>Gider: {fmt(selectedData?.gider ?? 0)}</span>
+              <span className="font-semibold">Net: {fmt((selectedData?.gelir ?? 0) - (selectedData?.gider ?? 0))}</span>
+            </div>
+          </div>
+
+          {!selectedData || selectedData.txns.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-3 text-center">Bu gün için kayıt yok.</p>
+          ) : (
+            <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+              {[...selectedData.txns].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(t => (
+                <div key={t.id} className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg bg-muted/40">
+                  <div className="flex items-center gap-2">
+                    <span className={[
+                      "w-1.5 h-1.5 rounded-full shrink-0",
+                      t.type === "gelir" ? "bg-green-500" : "bg-red-500",
+                    ].join(" ")} />
+                    <span className="text-muted-foreground">{t.category}</span>
+                    {t.description && <span className="text-foreground truncate max-w-[180px]">— {t.description}</span>}
+                  </div>
+                  <span className="font-semibold shrink-0 ml-2" style={{ color: t.type === "gelir" ? PALETTE.green : PALETTE.red }}>
+                    {t.type === "gelir" ? "+" : "-"}{fmt(t.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -259,6 +422,9 @@ function OzetTab() {
           <p className="text-lg font-bold">{orders.length}</p>
         </div>
       </div>
+
+      {/* ── Günlük Takvim ── */}
+      <DailyCalendar transactions={transactions} />
     </div>
   );
 }
