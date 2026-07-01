@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { User, Lock, ShoppingBag, Camera, Loader2 } from "lucide-react";
+import { User, Lock, Camera, Loader2 } from "lucide-react";
 
 export function ProfileModal() {
-  const { isProfileModalOpen, setIsProfileModalOpen, currentUser, updateUser, orders } = useStore();
+  const { isProfileModalOpen, setIsProfileModalOpen, currentUser, updateUser } = useStore();
   const { user: clerkUser } = useUser();
   const { toast } = useToast();
 
@@ -32,8 +32,6 @@ export function ProfileModal() {
   const isOAuthUser = currentUser.password === "__clerk_oauth__";
   const avatarUrl = clerkUser?.imageUrl;
   const initials = currentUser.name.split(" ").map(w => w[0] ?? "").join("").toUpperCase().slice(0, 2);
-
-  const userOrders = orders.filter(o => o.userId === currentUser.id || o.userEmail === currentUser.email);
 
   const handleOpen = (open: boolean) => {
     if (open) {
@@ -153,7 +151,7 @@ export function ProfileModal() {
         </div>
 
         <Tabs defaultValue="profile" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid grid-cols-3 w-full rounded-none bg-transparent border-b border-border h-auto shrink-0 p-0 gap-0">
+          <TabsList className="grid grid-cols-2 w-full rounded-none bg-transparent border-b border-border h-auto shrink-0 p-0 gap-0">
             <TabsTrigger
               value="profile"
               className="flex flex-col items-center gap-1 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent bg-transparent text-xs font-medium"
@@ -176,13 +174,6 @@ export function ProfileModal() {
                 <span>Şifre</span>
               </div>
             )}
-            <TabsTrigger
-              value="orders"
-              className="flex flex-col items-center gap-1 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent bg-transparent text-xs font-medium"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>Siparişler</span>
-            </TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-y-auto">
@@ -263,37 +254,6 @@ export function ProfileModal() {
               <Button onClick={handlePasswordSave} className="w-full bg-[#b84d5b] hover:bg-[#b84d5b]/90 text-white">
                 Şifreyi Güncelle
               </Button>
-            </TabsContent>
-
-            {/* ── SİPARİŞLER ── */}
-            <TabsContent value="orders" className="p-5 mt-0">
-              {userOrders.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm">Henüz bir siparişiniz bulunmamaktadır.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {userOrders.slice().reverse().map(order => (
-                    <div key={order.id} className="p-4 border border-border rounded-xl bg-background/50 space-y-2">
-                      <div className="flex justify-between items-center pb-2 border-b border-border/50">
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(order.date), "dd MMM yyyy HH:mm", { locale: tr })}
-                        </span>
-                        <span className="font-bold text-[#b84d5b] text-sm">{order.total} TL</span>
-                      </div>
-                      <div className="space-y-1">
-                        {order.items.map(item => (
-                          <div key={item.id} className="flex justify-between text-xs">
-                            <span className="text-foreground/80">{item.quantity}x {item.name}</span>
-                            <span className="text-muted-foreground">{item.price * item.quantity} TL</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </TabsContent>
 
           </div>

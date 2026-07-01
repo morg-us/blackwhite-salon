@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, isSameDay, isBefore, startOfDay } from "date-fns";
 import { tr } from "date-fns/locale";
-import { LogOut, Users, ShoppingBag, Calendar, MessageSquare, TrendingUp, Star, Trash2, CheckCircle2, XCircle, Clock, KeyRound, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { LogOut, Users, Calendar, MessageSquare, TrendingUp, Star, Trash2, CheckCircle2, XCircle, Clock, KeyRound, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import type { AppointmentStatus, Appointment } from "@/lib/store";
 
 export function AdminPanel() {
@@ -18,7 +18,7 @@ export function AdminPanel() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const { appointments, messages, orders, users, reviews, deleteReview, transactions, updateAppointmentStatus, siteContent, updateSiteContent } = useStore();
+  const { appointments, messages, users, reviews, deleteReview, transactions, updateAppointmentStatus, siteContent, updateSiteContent } = useStore();
 
   const adminCreds = siteContent.adminCredentials ?? { username: "admin", password: "admin123" };
 
@@ -124,7 +124,6 @@ export function AdminPanel() {
           {[
             { icon: Users, label: "Kayıtlı Üye", value: users.length, color: "text-blue-400" },
             { icon: Calendar, label: "Bugün Randevu", value: todayAppts, color: "text-green-400" },
-            { icon: ShoppingBag, label: "Toplam Sipariş", value: orders.length, color: "text-purple-400" },
             { icon: TrendingUp, label: "Toplam Gelir", value: `${totalRevenue.toLocaleString()} TL`, color: "text-accent" },
           ].map(stat => (
             <div key={stat.label} className="bg-card border border-border rounded-xl p-3 md:p-4 flex items-center gap-3">
@@ -148,7 +147,6 @@ export function AdminPanel() {
               { value: "randevular", label: `Randevular (${appointments.length})` },
               { value: "yorumlar", label: `Yorumlar (${reviews.length})` },
               { value: "mesajlar", label: `Mesajlar (${messages.length})` },
-              { value: "siparisler", label: `Siparişler (${orders.length})` },
               { value: "hesap", label: "🔑 Admin Hesabı" },
             ].map(tab => (
               <TabsTrigger
@@ -200,13 +198,10 @@ export function AdminPanel() {
                           <TableHead>Üye</TableHead>
                           <TableHead className="hidden sm:table-cell">E-Posta</TableHead>
                           <TableHead className="hidden md:table-cell">Kayıt Tarihi</TableHead>
-                          <TableHead>Siparişler</TableHead>
-                        </TableRow>
+                          </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {users.map(user => {
-                          const userOrders = orders.filter(o => o.userId === user.id || o.userEmail === user.email);
-                          return (
+                        {users.map(user => (
                             <TableRow key={user.id}>
                               <TableCell>
                                 <div className="flex items-center gap-2">
@@ -221,14 +216,8 @@ export function AdminPanel() {
                               <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                                 {format(new Date(user.createdAt), "dd MMM yyyy", { locale: tr })}
                               </TableCell>
-                              <TableCell>
-                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${userOrders.length > 0 ? "bg-green-500/15 text-green-400" : "bg-muted text-muted-foreground"}`}>
-                                  {userOrders.length} sipariş
-                                </span>
-                              </TableCell>
                             </TableRow>
-                          );
-                        })}
+                          ))}
                       </TableBody>
                     </Table>
                   </div>
@@ -317,40 +306,6 @@ export function AdminPanel() {
                         <TableCell className="font-medium text-sm whitespace-nowrap">{msg.name}</TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">{msg.email}</TableCell>
                         <TableCell className="text-sm max-w-xs break-words">{msg.message}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-
-          {/* ── Siparişler ── */}
-          <TabsContent value="siparisler">
-            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-background">
-                  <TableRow>
-                    <TableHead>Tarih</TableHead>
-                    <TableHead>Müşteri</TableHead>
-                    <TableHead className="hidden sm:table-cell">Ürünler</TableHead>
-                    <TableHead className="text-right">Toplam</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Kayıt bulunamadı.</TableCell></TableRow>
-                  ) : (
-                    orders.slice().reverse().map(order => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-medium text-sm">{format(new Date(order.date), "dd MMM HH:mm", { locale: tr })}</TableCell>
-                        <TableCell className="text-sm">{order.customerName}</TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <div className="flex flex-col gap-0.5">
-                            {order.items.map(i => <span key={i.id} className="text-xs text-muted-foreground">{i.quantity}x {i.name}</span>)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-accent text-sm">{order.total} TL</TableCell>
                       </TableRow>
                     ))
                   )}

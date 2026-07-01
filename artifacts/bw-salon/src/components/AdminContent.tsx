@@ -532,7 +532,7 @@ export function AdminContent() {
     <Tabs defaultValue="hero" className="w-full">
       <TabsList className="mb-6 flex w-full overflow-x-auto gap-1 bg-background border border-border rounded-xl p-1 h-auto">
         <TabsTrigger value="hero" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Hero & Logo</TabsTrigger>
-        <TabsTrigger value="store" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Mağaza</TabsTrigger>
+        <TabsTrigger value="store" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Ürünlerimiz</TabsTrigger>
         <TabsTrigger value="gallery" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Galeri</TabsTrigger>
         <TabsTrigger value="staff" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Personel</TabsTrigger>
         <TabsTrigger value="prices" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Fiyat Listesi</TabsTrigger>
@@ -591,7 +591,7 @@ export function AdminContent() {
       {/* ── MAĞAZA ÜRÜNLERİ ── */}
       <TabsContent value="store" className="space-y-6">
         <div className="flex justify-between items-center">
-          <h3 className="font-semibold text-lg">Mağaza Ürünleri ({siteContent.storeProducts.length})</h3>
+          <h3 className="font-semibold text-lg">Ürünlerimiz ({siteContent.storeProducts.length})</h3>
           <Button onClick={() => { setProductForm(EMPTY_PRODUCT); setShowProductForm(true); }} className="gap-2 bg-[#b84d5b] text-white hover:bg-[#b84d5b]/90">
             <Plus className="w-4 h-4" /> Yeni Ürün Ekle
           </Button>

@@ -47,7 +47,7 @@ export function Footer() {
             </div>
             <div className="flex flex-col gap-2">
               <a href="#gallery" className="text-muted-foreground hover:text-primary transition-colors">{t("footer_gallery")}</a>
-              <a href="#store" className="text-muted-foreground hover:text-primary transition-colors">{t("footer_store")}</a>
+              <a href="#products" className="text-muted-foreground hover:text-primary transition-colors">{t("footer_store")}</a>
               <a href="#contact" className="text-muted-foreground hover:text-primary transition-colors">{t("footer_contact")}</a>
             </div>
           </div>

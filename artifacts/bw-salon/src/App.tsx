@@ -13,8 +13,7 @@ import { Staff } from "@/components/Staff";
 import { Reviews } from "@/components/Reviews";
 import { Pricing } from "@/components/Pricing";
 import { Gallery } from "@/components/Gallery";
-import { Store } from "@/components/Store";
-import { CartDrawer } from "@/components/CartDrawer";
+import { OurProducts } from "@/components/Store";
 import { Contact } from "@/components/Contact";
 import { LiveChat } from "@/components/LiveChat";
 import { Footer } from "@/components/Footer";
@@ -63,12 +62,11 @@ function MainApp() {
         <Reviews />
         <Pricing />
         <Gallery />
-        <Store />
+        <OurProducts />
         <Contact />
       </main>
       <Footer />
 
-      <CartDrawer />
       <LiveChat />
     </div>
   );

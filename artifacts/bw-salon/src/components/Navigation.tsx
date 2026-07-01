@@ -1,10 +1,9 @@
-import { ShoppingBag, Menu, X, User, LogOut, Package, Moon, Sun, Globe } from "lucide-react";
+import { Menu, X, User, LogOut, Moon, Sun, Globe } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/AuthModal";
 import { ProfileModal } from "@/components/ProfileModal";
-import { UserOrdersModal } from "@/components/UserOrdersModal";
 import { useUser, useClerk } from "@clerk/react";
 import { useT, LANGUAGES } from "@/lib/translations";
 
@@ -13,16 +12,14 @@ export function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
-  const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
-  const { cart, setIsCartOpen, setIsAuthModalOpen, setIsProfileModalOpen, siteContent, theme, setTheme, language, setLanguage } = useStore();
+  const { setIsAuthModalOpen, setIsProfileModalOpen, siteContent, theme, setTheme, language, setLanguage } = useStore();
   const { user, isSignedIn } = useUser();
   const { signOut } = useClerk();
   const t = useT();
 
-  const cartItemsCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const displayName = user?.fullName ?? user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
   const displayEmail = user?.emailAddresses?.[0]?.emailAddress ?? "";
   const avatarUrl = user?.imageUrl;
@@ -52,7 +49,7 @@ export function Navigation() {
     { name: t("nav_about"), href: "#staff" },
     { name: t("nav_pricing"), href: "#pricing" },
     { name: t("nav_gallery"), href: "#gallery" },
-    { name: t("nav_store"), href: "#store" },
+    { name: t("nav_store"), href: "#products" },
     { name: t("nav_contact"), href: "#contact" },
   ];
 
@@ -149,20 +146,6 @@ export function Navigation() {
               )}
             </div>
 
-            {/* Cart */}
-            <button
-              data-testid="button-cart"
-              className={`relative p-2 hover:text-primary transition-colors ${isScrolled ? "text-foreground" : "text-white"}`}
-              onClick={() => setIsCartOpen(true)}
-            >
-              <ShoppingBag className="w-5 h-5" />
-              {cartItemsCount > 0 && (
-                <span className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {cartItemsCount}
-                </span>
-              )}
-            </button>
-
             {/* Auth */}
             {isSignedIn ? (
               <div className="relative" ref={userMenuRef}>
@@ -189,12 +172,6 @@ export function Navigation() {
                       onClick={() => { setIsUserMenuOpen(false); setIsProfileModalOpen(true); }}
                     >
                       <User className="w-4 h-4 text-primary" /> {t("nav_profile")}
-                    </button>
-                    <button
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left"
-                      onClick={() => { setIsUserMenuOpen(false); setIsOrdersModalOpen(true); }}
-                    >
-                      <Package className="w-4 h-4 text-primary" /> {t("nav_orders")}
                     </button>
                     <div className="border-t border-border mt-1 pt-1">
                       <button
@@ -227,19 +204,6 @@ export function Navigation() {
               className={`p-2 ${isScrolled ? "text-foreground/70" : "text-white/80"}`}
             >
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
-            <button
-              className={`relative p-2 ${isScrolled ? "text-foreground" : "text-white"}`}
-              onClick={() => setIsCartOpen(true)}
-              data-testid="button-cart-mobile"
-            >
-              <ShoppingBag className="w-5 h-5" />
-              {cartItemsCount > 0 && (
-                <span className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {cartItemsCount}
-                </span>
-              )}
             </button>
 
             {isSignedIn ? (
@@ -318,10 +282,6 @@ export function Navigation() {
                     onClick={() => { setIsMobileMenuOpen(false); setIsProfileModalOpen(true); }}>
                     <User className="w-4 h-4 text-primary" /> {t("nav_profile")}
                   </button>
-                  <button className="w-full flex items-center gap-3 py-2.5 text-sm text-foreground hover:text-primary transition-colors"
-                    onClick={() => { setIsMobileMenuOpen(false); setIsOrdersModalOpen(true); }}>
-                    <Package className="w-4 h-4 text-primary" /> {t("nav_orders")}
-                  </button>
                   <button className="w-full flex items-center gap-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors mt-1"
                     onClick={handleLogout}>
                     <LogOut className="w-4 h-4" /> {t("nav_logout")}
@@ -342,7 +302,6 @@ export function Navigation() {
 
       <AuthModal />
       <ProfileModal />
-      <UserOrdersModal open={isOrdersModalOpen} onOpenChange={setIsOrdersModalOpen} />
     </>
   );
 }
