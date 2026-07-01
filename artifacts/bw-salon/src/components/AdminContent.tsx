@@ -353,12 +353,12 @@ export function AdminContent() {
   const productImgUpload = useImageInput(v => setProductForm(p => ({ ...p, imageUrl: v })));
 
   const handleProductSubmit = () => {
-    if (!productForm.name || !productForm.price) return;
+    if (!productForm.name) return;
     const invId = productForm.inventoryProductId || undefined;
     if (productForm.id) {
       updateStoreProduct(productForm.id, { ...productForm, price: Number(productForm.price), inventoryProductId: invId });
     } else {
-      addStoreProduct({ name: productForm.name, description: productForm.description, price: Number(productForm.price), imageUrl: productForm.imageUrl, inventoryProductId: invId });
+      addStoreProduct({ name: productForm.name, description: productForm.description, price: productForm.price ? Number(productForm.price) : 0, imageUrl: productForm.imageUrl, inventoryProductId: invId });
     }
     setShowProductForm(false);
     setProductForm(EMPTY_PRODUCT);
@@ -600,13 +600,9 @@ export function AdminContent() {
         {showProductForm && (
           <div className="p-5 border border-border rounded-xl bg-background space-y-4">
             <h4 className="font-medium text-sm">{productForm.id ? "Ürünü Düzenle" : "Yeni Ürün Ekle"}</h4>
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid gap-4">
               <Input placeholder="Ürün Adı" value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))} />
-              <Input type="number" placeholder="Fiyat (TL)" value={productForm.price} onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))} />
-              <div className="md:col-span-2">
-                <Textarea placeholder="Açıklama" value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} />
-              </div>
-              <div className="md:col-span-2 space-y-2">
+              <div className="space-y-2">
                 <p className="text-xs text-muted-foreground flex items-center gap-1"><LinkIcon className="w-3 h-3" /> URL girin veya bilgisayardan yükleyin</p>
                 <div className="flex gap-2 items-center">
                   <Input
@@ -627,7 +623,7 @@ export function AdminContent() {
                   )}
                 </div>
               </div>
-              <div className="md:col-span-2 space-y-1.5">
+              <div className="space-y-1.5">
                 <p className="text-xs font-medium text-muted-foreground">Stok Takibi (opsiyonel)</p>
                 <select
                   className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm"
@@ -639,7 +635,7 @@ export function AdminContent() {
                     <option key={inv.id} value={inv.id}>{inv.name} (Stok: {inv.stock} {inv.unit})</option>
                   ))}
                 </select>
-                <p className="text-xs text-muted-foreground">Seçilirse sipariş verildiğinde stok otomatik düşer ve gelir kaydedilir.</p>
+                <p className="text-xs text-muted-foreground">Seçilirse adisyon eklendiğinde stok otomatik düşer.</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -659,11 +655,10 @@ export function AdminContent() {
                 />
                 <div>
                   <h4 className="font-medium">{p.name}</h4>
-                  <p className="text-sm text-muted-foreground">{p.price} TL</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="icon" variant="outline" onClick={() => { setProductForm({ id: p.id, name: p.name, description: p.description, price: String(p.price), imageUrl: p.imageUrl, inventoryProductId: p.inventoryProductId ?? "" }); setShowProductForm(true); }}>
+                <Button size="icon" variant="outline" onClick={() => { setProductForm({ id: p.id, name: p.name, description: p.description ?? "", price: String(p.price ?? ""), imageUrl: p.imageUrl, inventoryProductId: p.inventoryProductId ?? "" }); setShowProductForm(true); }}>
                   <Edit2 className="w-4 h-4" />
                 </Button>
                 <Button size="icon" variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => deleteStoreProduct(p.id)}>
