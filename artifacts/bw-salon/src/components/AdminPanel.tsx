@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useStore } from "@/lib/store";
 import { AdminFinance } from "@/components/AdminFinance";
 import { AdminStock } from "@/components/AdminStock";
@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format } from "date-fns";
+import { format, isSameDay, isBefore, startOfDay } from "date-fns";
 import { tr } from "date-fns/locale";
-import { LogOut, Users, ShoppingBag, Calendar, MessageSquare, TrendingUp, Star, Trash2, CheckCircle2, XCircle, Clock, KeyRound, ShieldCheck } from "lucide-react";
-import type { AppointmentStatus } from "@/lib/store";
+import { LogOut, Users, ShoppingBag, Calendar, MessageSquare, TrendingUp, Star, Trash2, CheckCircle2, XCircle, Clock, KeyRound, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import type { AppointmentStatus, Appointment } from "@/lib/store";
 
 export function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -253,44 +253,11 @@ export function AdminPanel() {
 
           {/* ── Randevular ── */}
           <TabsContent value="randevular">
-            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-background">
-                  <TableRow>
-                    <TableHead>Tarih & Saat</TableHead>
-                    <TableHead>Müşteri</TableHead>
-                    <TableHead className="hidden sm:table-cell">Telefon</TableHead>
-                    <TableHead className="hidden md:table-cell">Kategori</TableHead>
-                    <TableHead>Uzman</TableHead>
-                    <TableHead className="text-center">Durum</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {appointments.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Kayıt bulunamadı.</TableCell></TableRow>
-                  ) : (
-                    appointments.slice().reverse().map(app => (
-                      <TableRow key={app.id}>
-                        <TableCell className="font-medium text-sm">
-                          {format(new Date(app.date), "dd MMM yyyy", { locale: tr })}
-                          <br /><span className="text-accent">{app.time}</span>
-                        </TableCell>
-                        <TableCell className="text-sm">{app.name}</TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm">{app.phone}</TableCell>
-                        <TableCell className="hidden md:table-cell text-sm">{getCategoryLabel(app.category)}</TableCell>
-                        <TableCell className="text-sm">{app.staff}</TableCell>
-                        <TableCell className="text-center">
-                          <AppointmentStatusToggle
-                            status={(app.status ?? "pending") as AppointmentStatus}
-                            onChange={s => updateAppointmentStatus(app.id, s)}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            <RandevuCalendar
+              appointments={appointments}
+              getCategoryLabel={getCategoryLabel}
+              updateAppointmentStatus={updateAppointmentStatus}
+            />
           </TabsContent>
 
           {/* ── Yorumlar ── */}
@@ -537,6 +504,245 @@ function AdminCredentials({
           <KeyRound className="w-4 h-4 mr-2" /> Hesabı Güncelle
         </Button>
       </form>
+    </div>
+  );
+}
+
+// ─── Randevu Takvimi ──────────────────────────────────────────────────────────
+const GUN_BASLIKLARI = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
+function RandevuCalendar({
+  appointments,
+  getCategoryLabel,
+  updateAppointmentStatus,
+}: {
+  appointments: Appointment[];
+  getCategoryLabel: (key: string) => string;
+  updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
+}) {
+  const today = startOfDay(new Date());
+
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(today.getMonth());
+  const [selectedDate, setSelectedDate] = useState<Date>(today);
+
+  // Günlük randevu haritası  "YYYY-MM-DD" → Appointment[]
+  const dayMap = useMemo(() => {
+    const map: Record<string, Appointment[]> = {};
+    appointments.forEach(a => {
+      const d = startOfDay(new Date(a.date));
+      const k = format(d, "yyyy-MM-dd");
+      if (!map[k]) map[k] = [];
+      map[k].push(a);
+    });
+    // Her gün saate göre sırala
+    Object.values(map).forEach(arr => arr.sort((a, b) => a.time.localeCompare(b.time)));
+    return map;
+  }, [appointments]);
+
+  // Takvim hücreleri
+  const cells = useMemo(() => {
+    const firstDay = new Date(calYear, calMonth, 1);
+    let offset = firstDay.getDay() - 1;
+    if (offset < 0) offset = 6;
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const arr: (number | null)[] = Array(offset).fill(null);
+    for (let d = 1; d <= daysInMonth; d++) arr.push(d);
+    while (arr.length % 7 !== 0) arr.push(null);
+    return arr;
+  }, [calYear, calMonth]);
+
+  const prevMonth = useCallback(() => {
+    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); }
+    else setCalMonth(m => m - 1);
+  }, [calMonth]);
+
+  const nextMonth = useCallback(() => {
+    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0); }
+    else setCalMonth(m => m + 1);
+  }, [calMonth]);
+
+  // Seçili gün verileri
+  const selectedKey = format(selectedDate, "yyyy-MM-dd");
+  const selectedAppts = dayMap[selectedKey] ?? [];
+  const isSelectedPast = isBefore(selectedDate, today);
+  const isSelectedToday = isSameDay(selectedDate, today);
+  const isSelectedFuture = !isSelectedPast && !isSelectedToday;
+
+  // Özet sayaçlar
+  const todayCount = (dayMap[format(today, "yyyy-MM-dd")] ?? []).length;
+  const futureCount = appointments.filter(a => {
+    const d = startOfDay(new Date(a.date));
+    return !isBefore(d, today) && !isSameDay(d, today);
+  }).length;
+  const totalCount = appointments.length;
+
+  return (
+    <div className="space-y-4">
+      {/* Üst özet bandı */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Bugün", value: todayCount, color: "text-[#b84d5b]", bg: "bg-[#b84d5b]/10 border-[#b84d5b]/20" },
+          { label: "Gelecek", value: futureCount, color: "text-blue-500", bg: "bg-blue-500/10 border-blue-500/20" },
+          { label: "Toplam", value: totalCount, color: "text-muted-foreground", bg: "bg-muted/50 border-border" },
+        ].map(s => (
+          <div key={s.label} className={`rounded-xl border p-3 text-center ${s.bg}`}>
+            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid md:grid-cols-[340px_1fr] gap-4 items-start">
+        {/* ── Takvim ── */}
+        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+          {/* Ay navigasyon */}
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm font-semibold capitalize">
+              {format(new Date(calYear, calMonth, 1), "MMMM yyyy", { locale: tr })}
+            </span>
+            <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Gün başlıkları */}
+          <div className="grid grid-cols-7 mb-1">
+            {GUN_BASLIKLARI.map(g => (
+              <div key={g} className="text-center text-[11px] text-muted-foreground font-medium py-1">{g}</div>
+            ))}
+          </div>
+
+          {/* Takvim hücreleri */}
+          <div className="grid grid-cols-7 gap-0.5">
+            {cells.map((day, idx) => {
+              if (!day) return <div key={`e-${idx}`} />;
+              const cellDate = startOfDay(new Date(calYear, calMonth, day));
+              const k = format(cellDate, "yyyy-MM-dd");
+              const count = (dayMap[k] ?? []).length;
+              const isPast = isBefore(cellDate, today);
+              const isToday = isSameDay(cellDate, today);
+              const isSelected = isSameDay(cellDate, selectedDate);
+
+              return (
+                <button
+                  key={k}
+                  onClick={() => {
+                    setSelectedDate(cellDate);
+                    setCalYear(cellDate.getFullYear());
+                    setCalMonth(cellDate.getMonth());
+                  }}
+                  className={[
+                    "relative flex flex-col items-center justify-center rounded-lg h-10 text-xs font-medium transition-all",
+                    isSelected
+                      ? "bg-[#b84d5b] text-white shadow-md"
+                      : isToday
+                        ? "bg-[#b84d5b]/15 text-[#b84d5b] font-bold ring-1 ring-[#b84d5b]/40"
+                        : isPast
+                          ? "text-muted-foreground/50 hover:bg-muted/50"
+                          : "hover:bg-muted",
+                  ].join(" ")}
+                >
+                  <span className="leading-none">{day}</span>
+                  {count > 0 && (
+                    <span className={[
+                      "mt-0.5 text-[9px] font-bold leading-none",
+                      isSelected ? "text-white/80" : isToday ? "text-[#b84d5b]" : isPast ? "text-muted-foreground/40" : "text-blue-500",
+                    ].join(" ")}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Renk açıklaması */}
+          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#b84d5b]/30 inline-block" />Bugün</span>
+            <span className="flex items-center gap-1"><span className="text-blue-500 font-bold">•</span>Gelecek</span>
+            <span className="flex items-center gap-1"><span className="text-muted-foreground/40 font-bold">•</span>Geçmiş</span>
+          </div>
+        </div>
+
+        {/* ── Seçili gün detayı ── */}
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          {/* Gün başlığı */}
+          <div className={[
+            "px-4 py-3 border-b border-border flex items-center justify-between",
+            isSelectedToday ? "bg-[#b84d5b]/8" : isSelectedFuture ? "bg-blue-500/5" : "bg-muted/30",
+          ].join(" ")}>
+            <div>
+              <p className="font-semibold text-sm capitalize">
+                {format(selectedDate, "d MMMM yyyy, EEEE", { locale: tr })}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isSelectedToday
+                  ? "Bugün"
+                  : isSelectedFuture
+                    ? "Gelecek randevular"
+                    : "Geçmiş randevular"}
+                {" — "}
+                <span className="font-medium">{selectedAppts.length} randevu</span>
+              </p>
+            </div>
+            {isSelectedToday && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#b84d5b] text-white">BUGÜN</span>
+            )}
+            {isSelectedFuture && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-500">GELECEK</span>
+            )}
+          </div>
+
+          {/* Randevu listesi */}
+          {selectedAppts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-14 text-muted-foreground">
+              <Calendar className="w-10 h-10 mb-3 opacity-20" />
+              <p className="text-sm">Bu gün için randevu yok.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {selectedAppts.map(app => (
+                <div key={app.id} className={[
+                  "flex items-center gap-3 px-4 py-3",
+                  isSelectedPast ? "opacity-70" : "",
+                ].join(" ")}>
+                  {/* Saat */}
+                  <div className={[
+                    "shrink-0 w-14 h-14 rounded-xl flex flex-col items-center justify-center text-xs font-bold",
+                    isSelectedToday
+                      ? "bg-[#b84d5b]/10 text-[#b84d5b]"
+                      : isSelectedFuture
+                        ? "bg-blue-500/10 text-blue-500"
+                        : "bg-muted text-muted-foreground",
+                  ].join(" ")}>
+                    <Clock className="w-3.5 h-3.5 mb-0.5 opacity-60" />
+                    <span className="text-sm leading-tight">{app.time}</span>
+                  </div>
+
+                  {/* Bilgiler */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{app.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{getCategoryLabel(app.category)} · {app.staff}</p>
+                    <p className="text-xs text-muted-foreground">{app.phone}</p>
+                  </div>
+
+                  {/* Durum toggle */}
+                  <div className="shrink-0">
+                    <AppointmentStatusToggle
+                      status={(app.status ?? "pending") as AppointmentStatus}
+                      onChange={s => updateAppointmentStatus(app.id, s)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
