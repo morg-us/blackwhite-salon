@@ -41,26 +41,39 @@ RUN pnpm run build:production
 # ══════════════════════════════════════════════════════════════════════════════
 FROM node:24-slim AS runner
 
+# ── APT güvenilirlik ayarları ─────────────────────────────────────────────────
+# Acquire::Retries=5  → ağ hatasında 5 kez tekrar dener
+# Acquire::http::Timeout=60 → zaman aşımını uzatır (büyük paketler için)
+# ─────────────────────────────────────────────────────────────────────────────
+RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "60";\nAcquire::https::Timeout "60";\n' \
+      > /etc/apt/apt.conf.d/99-retrys
+
+# Temel sistem araçları ve CA sertifikaları (küçük, hızlı)
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 # Chromium ve whatsapp-web.js için gerekli sistem bağımlılıkları
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium \
-    chromium-sandbox \
-    fonts-freefont-ttf \
-    fonts-noto-color-emoji \
-    libnss3 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libxkbcommon0 \
-    libpango-1.0-0 \
-    libcairo2 \
-    libasound2 \
-    ca-certificates \
+# Not: node:24-slim → Debian bookworm → libasound2 → libasound2t64 olarak yeniden adlandırıldı
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+        chromium \
+        chromium-sandbox \
+        fonts-freefont-ttf \
+        fonts-noto-color-emoji \
+        libnss3 \
+        libatk-bridge2.0-0 \
+        libcups2 \
+        libdrm2 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxrandr2 \
+        libgbm1 \
+        libxkbcommon0 \
+        libpango-1.0-0 \
+        libcairo2 \
+        libasound2t64 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
