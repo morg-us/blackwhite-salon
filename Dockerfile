@@ -14,11 +14,12 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc \
      tsconfig.base.json tsconfig.json ./
 
 # Lib ve artifact paketlerinin package.json dosyaları
-COPY lib/db/package.json            ./lib/db/
-COPY lib/api-spec/package.json      ./lib/api-spec/
-COPY lib/api-zod/package.json       ./lib/api-zod/
-COPY lib/api-client-react/package.json ./lib/api-client-react/
-COPY lib/integrations/package.json  ./lib/integrations/
+COPY lib/db/package.json                          ./lib/db/
+COPY lib/api-spec/package.json                    ./lib/api-spec/
+COPY lib/api-zod/package.json                     ./lib/api-zod/
+COPY lib/api-client-react/package.json            ./lib/api-client-react/
+COPY lib/integrations-openai-ai-react/package.json  ./lib/integrations-openai-ai-react/
+COPY lib/integrations-openai-ai-server/package.json ./lib/integrations-openai-ai-server/
 COPY artifacts/api-server/package.json  ./artifacts/api-server/
 COPY artifacts/bw-salon/package.json    ./artifacts/bw-salon/
 COPY scripts/package.json               ./scripts/
@@ -91,11 +92,12 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc \
      tsconfig.base.json tsconfig.json ./
 
 # Paket tanımları (sadece runtime için gerekenler)
-COPY lib/db/package.json                ./lib/db/
-COPY lib/api-spec/package.json          ./lib/api-spec/
-COPY lib/api-zod/package.json           ./lib/api-zod/
-COPY lib/api-client-react/package.json  ./lib/api-client-react/
-COPY lib/integrations/package.json      ./lib/integrations/
+COPY lib/db/package.json                              ./lib/db/
+COPY lib/api-spec/package.json                        ./lib/api-spec/
+COPY lib/api-zod/package.json                         ./lib/api-zod/
+COPY lib/api-client-react/package.json                ./lib/api-client-react/
+COPY lib/integrations-openai-ai-react/package.json    ./lib/integrations-openai-ai-react/
+COPY lib/integrations-openai-ai-server/package.json   ./lib/integrations-openai-ai-server/
 COPY artifacts/api-server/package.json  ./artifacts/api-server/
 COPY artifacts/bw-salon/package.json    ./artifacts/bw-salon/
 COPY scripts/package.json               ./scripts/
