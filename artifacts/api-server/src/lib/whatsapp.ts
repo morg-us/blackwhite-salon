@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { Client, LocalAuth } from "whatsapp-web.js";
 import qrcode from "qrcode-terminal";
 import { logger } from "./logger";
@@ -23,6 +24,16 @@ const PUPPETEER_ARGS = [
   "--disable-gpu",
 ];
 
+function findChromium(): string | undefined {
+  for (const candidate of ["chromium", "chromium-browser", "google-chrome", "google-chrome-stable"]) {
+    try {
+      const p = execSync(`which ${candidate}`, { encoding: "utf8" }).trim();
+      if (p) return p;
+    } catch { /* not found */ }
+  }
+  return undefined;
+}
+
 export function getWhatsAppStatus(): WhatsAppStatus {
   return currentStatus;
 }
@@ -42,11 +53,19 @@ export async function initWhatsApp(): Promise<Client> {
 
   logger.info("WhatsApp istemcisi başlatılıyor...");
 
+  const executablePath = findChromium();
+  if (executablePath) {
+    logger.info({ executablePath }, "Sistem Chromium kullanılıyor");
+  } else {
+    logger.warn("Sistem Chromium bulunamadı — puppeteer kendi Chrome'unu kullanacak");
+  }
+
   client = new Client({
     authStrategy: new LocalAuth({ dataPath: "./.wwebjs_auth" }),
     puppeteer: {
       headless: true,
       args: PUPPETEER_ARGS,
+      ...(executablePath ? { executablePath } : {}),
     },
   });
 
