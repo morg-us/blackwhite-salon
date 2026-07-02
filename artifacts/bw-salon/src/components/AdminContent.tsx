@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, Component } from "react";
 import type { ReactNode, CSSProperties } from "react";
 import { useStore } from "@/lib/store";
-import type { StaffMember, ContactInfo, PriceList, StaffRole, AppointmentSettings, AppointmentCategory } from "@/lib/store";
+import type { StaffMember, ContactInfo, PriceList, StaffRole, AppointmentSettings, AppointmentCategory, Campaign } from "@/lib/store";
 import {
   DndContext,
   closestCenter,
@@ -295,6 +295,9 @@ function ImageInputField({
 const EMPTY_PRODUCT = { id: "", name: "", description: "", price: "", imageUrl: "", inventoryProductId: "" };
 const EMPTY_STAFF: Omit<StaffMember, "id"> = { name: "", title: "", experience: "", rating: 5.0, initials: "", tags: [], imageUrl: "" };
 
+type CampaignForm = { id: string; name: string; discountType: "percent" | "fixed"; discountValue: string; startDate: string; endDate: string; scope: string; enabled: boolean; };
+const EMPTY_CAMPAIGN: CampaignForm = { id: "", name: "", discountType: "percent", discountValue: "", startDate: "", endDate: "", scope: "all", enabled: true };
+
 const SAC_SUBCATS = ["ombre", "sombre", "kesim", "boyama", "röfle", "keratin", "gelin"];
 const PRICE_CAT_FALLBACK: Record<keyof PriceList, string> = {
   sac: "Saç Hizmetleri", makyaj: "Makyaj", gelin: "Gelin & Özel", manikur: "Manikür & Pedikür", agda: "Ağda",
@@ -309,6 +312,7 @@ export function AdminContent() {
     addGalleryItem, deleteGalleryItem,
     addStaffMember, updateStaffMember, deleteStaffMember, reorderStaffMembers,
     updatePriceItem, addPriceItem, deletePriceItem,
+    addCampaign, updateCampaign, deleteCampaign,
     staffUsers, addStaffUser, updateStaffUser, deleteStaffUser,
     inventory,
   } = useStore();
@@ -381,6 +385,28 @@ export function AdminContent() {
   const [priceTab, setPriceTab] = useState<keyof PriceList>("sac");
   const [editingPrice, setEditingPrice] = useState<{ index: number; name: string; price: string } | null>(null);
   const [newPriceItem, setNewPriceItem] = useState({ name: "", price: "" });
+
+  const [campaignForm, setCampaignForm] = useState<CampaignForm>(EMPTY_CAMPAIGN);
+  const [showCampaignForm, setShowCampaignForm] = useState(false);
+
+  const handleCampaignSubmit = () => {
+    if (!campaignForm.name || !campaignForm.discountValue || !campaignForm.startDate || !campaignForm.endDate) {
+      toast({ title: "Hata", description: "Tüm zorunlu alanları doldurun.", variant: "destructive" });
+      return;
+    }
+    const scope: Campaign["scope"] = campaignForm.scope === "all"
+      ? "all"
+      : campaignForm.scope.split(",").map(s => s.trim()).filter(Boolean);
+    const base = { name: campaignForm.name, discountType: campaignForm.discountType, discountValue: Number(campaignForm.discountValue), startDate: campaignForm.startDate, endDate: campaignForm.endDate, scope, enabled: campaignForm.enabled };
+    if (campaignForm.id) {
+      updateCampaign(campaignForm.id, base);
+    } else {
+      addCampaign(base);
+    }
+    setCampaignForm(EMPTY_CAMPAIGN);
+    setShowCampaignForm(false);
+    toast({ title: "Başarılı", description: "Kampanya kaydedildi." });
+  };
 
   const handleSavePrice = () => {
     if (!editingPrice) return;
@@ -536,6 +562,7 @@ export function AdminContent() {
         <TabsTrigger value="gallery" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Galeri</TabsTrigger>
         <TabsTrigger value="staff" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Personel</TabsTrigger>
         <TabsTrigger value="prices" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Fiyat Listesi</TabsTrigger>
+        <TabsTrigger value="campaigns" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">🏷️ Kampanyalar</TabsTrigger>
         <TabsTrigger value="appointment" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">📅 Randevu Formu</TabsTrigger>
         <TabsTrigger value="accounts" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">Personel Hesapları</TabsTrigger>
         <TabsTrigger value="contact" className="text-xs whitespace-nowrap shrink-0 data-[state=active]:bg-primary">İletişim</TabsTrigger>
@@ -882,6 +909,171 @@ export function AdminContent() {
               <Plus className="w-4 h-4" /> Ekle
             </Button>
           </div>
+        </div>
+      </TabsContent>
+
+      {/* ── KAMPANYALAR ── */}
+      <TabsContent value="campaigns" className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="font-semibold text-lg flex items-center gap-2">🏷️ Dinamik İndirim &amp; Kampanyalar</h3>
+            <p className="text-xs text-muted-foreground mt-1">Fiyat listesine zaman sınırlı indirimler ekle. Süre bitince fiyatlar otomatik eski haline döner.</p>
+          </div>
+          <Button onClick={() => { setCampaignForm(EMPTY_CAMPAIGN); setShowCampaignForm(true); }} className="gap-2 bg-[#b84d5b] text-white hover:bg-[#b84d5b]/90">
+            <Plus className="w-4 h-4" /> Yeni Kampanya
+          </Button>
+        </div>
+
+        {showCampaignForm && (
+          <div className="p-5 border border-primary/30 rounded-xl bg-background space-y-4">
+            <h4 className="font-medium text-sm">{campaignForm.id ? "Kampanyayı Düzenle" : "Yeni Kampanya Oluştur"}</h4>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="text-xs text-muted-foreground mb-1 block">Kampanya Adı *</label>
+                <Input placeholder="Örn: Yaz İndirimi, Açılış Kampanyası" value={campaignForm.name} onChange={e => setCampaignForm(p => ({ ...p, name: e.target.value }))} />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">İndirim Türü *</label>
+                <select
+                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm"
+                  value={campaignForm.discountType}
+                  onChange={e => setCampaignForm(p => ({ ...p, discountType: e.target.value as "percent" | "fixed" }))}
+                >
+                  <option value="percent">Yüzdelik (%)</option>
+                  <option value="fixed">Sabit Tutar (TL)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  İndirim Miktarı * {campaignForm.discountType === "percent" ? "(örn: 20 → %20)" : "(örn: 500 → 500 TL)"}
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  max={campaignForm.discountType === "percent" ? "99" : undefined}
+                  placeholder={campaignForm.discountType === "percent" ? "20" : "500"}
+                  value={campaignForm.discountValue}
+                  onChange={e => setCampaignForm(p => ({ ...p, discountValue: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Başlangıç Tarihi & Saati *</label>
+                <Input type="datetime-local" value={campaignForm.startDate} onChange={e => setCampaignForm(p => ({ ...p, startDate: e.target.value }))} />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Bitiş Tarihi & Saati *</label>
+                <Input type="datetime-local" value={campaignForm.endDate} onChange={e => setCampaignForm(p => ({ ...p, endDate: e.target.value }))} />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-xs text-muted-foreground mb-1 block">Kapsam</label>
+                <select
+                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm"
+                  value={campaignForm.scope}
+                  onChange={e => setCampaignForm(p => ({ ...p, scope: e.target.value }))}
+                >
+                  <option value="all">Tüm Fiyat Listesi</option>
+                  {(Object.keys(siteContent.priceList) as (keyof PriceList)[]).map(cat => {
+                    const label = siteContent.appointmentSettings.categories.find(c => c.key === cat)?.label ?? PRICE_CAT_FALLBACK[cat] ?? cat;
+                    return <option key={cat} value={cat}>{label}</option>;
+                  })}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">Birden fazla kategori için değerleri virgülle girin: sac,makyaj</p>
+              </div>
+
+              <div className="md:col-span-2 flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="campaign-enabled"
+                  checked={campaignForm.enabled}
+                  onChange={e => setCampaignForm(p => ({ ...p, enabled: e.target.checked }))}
+                  className="w-4 h-4 accent-[#b84d5b]"
+                />
+                <label htmlFor="campaign-enabled" className="text-sm">Kampanyayı aktif et (tarih aralığında otomatik yayınlanır)</label>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={handleCampaignSubmit} className="bg-[#b84d5b] text-white hover:bg-[#b84d5b]/90">Kaydet</Button>
+              <Button variant="outline" onClick={() => { setShowCampaignForm(false); setCampaignForm(EMPTY_CAMPAIGN); }}>İptal</Button>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {(siteContent.campaigns ?? []).length === 0 && !showCampaignForm && (
+            <div className="text-center py-12 text-muted-foreground border border-dashed border-border rounded-xl">
+              <p className="text-sm">Henüz kampanya oluşturulmadı.</p>
+              <p className="text-xs mt-1">"Yeni Kampanya" butonuna tıklayarak başlayın.</p>
+            </div>
+          )}
+          {(siteContent.campaigns ?? []).map(c => {
+            const now = new Date();
+            const start = new Date(c.startDate);
+            const end = new Date(c.endDate);
+            const isActive = c.enabled && start <= now && end >= now;
+            const isExpired = end < now;
+            const isPending = c.enabled && start > now;
+            const scopeLabel = c.scope === "all" ? "Tüm kategoriler" : Array.isArray(c.scope) ? c.scope.join(", ") : c.scope;
+            const discountLabel = c.discountType === "percent" ? `%${c.discountValue}` : `${c.discountValue.toLocaleString("tr-TR")} TL`;
+            const statusBadge = isActive
+              ? <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">● Aktif</span>
+              : isExpired
+              ? <span className="text-xs bg-muted text-muted-foreground border border-border px-2 py-0.5 rounded-full">Süresi Doldu</span>
+              : isPending
+              ? <span className="text-xs bg-blue-500/15 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">⏳ Bekliyor</span>
+              : <span className="text-xs bg-muted text-muted-foreground border border-border px-2 py-0.5 rounded-full">Devre Dışı</span>;
+            return (
+              <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-border rounded-xl bg-background">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm">{c.name}</span>
+                    {statusBadge}
+                    <span className="text-xs font-bold text-[#b84d5b]">{discountLabel} indirim</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                    <p>📅 {new Date(c.startDate).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })} → {new Date(c.endDate).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })}</p>
+                    <p>🎯 Kapsam: {scopeLabel}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => updateCampaign(c.id, { enabled: !c.enabled })}
+                  >
+                    {c.enabled ? "Devre Dışı" : "Aktif Et"}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      const scopeStr = c.scope === "all" ? "all" : Array.isArray(c.scope) ? c.scope.join(",") : c.scope;
+                      setCampaignForm({ id: c.id, name: c.name, discountType: c.discountType, discountValue: String(c.discountValue), startDate: c.startDate, endDate: c.endDate, scope: scopeStr, enabled: c.enabled });
+                      setShowCampaignForm(true);
+                    }}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                    onClick={() => deleteCampaign(c.id)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </TabsContent>
 

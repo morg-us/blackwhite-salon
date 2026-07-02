@@ -164,6 +164,17 @@ export type PriceList = {
   makyaj: PriceItem[];
 };
 
+export type Campaign = {
+  id: string;
+  name: string;
+  discountType: "percent" | "fixed";
+  discountValue: number;
+  startDate: string;
+  endDate: string;
+  scope: "all" | string[];
+  enabled: boolean;
+};
+
 export type AppointmentCategory = {
   key: string;
   label: string;
@@ -187,6 +198,7 @@ export type SiteContent = {
   priceList: PriceList;
   appointmentSettings: AppointmentSettings;
   adminCredentials: { username: string; password: string };
+  campaigns: Campaign[];
 };
 
 const DEFAULT_PRICE_LIST: PriceList = {
@@ -275,6 +287,7 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
   priceList: DEFAULT_PRICE_LIST,
   appointmentSettings: DEFAULT_APPOINTMENT_SETTINGS,
   adminCredentials: { username: "admin", password: "admin123" },
+  campaigns: [] as Campaign[],
 };
 
 const USER_COLORS = ["#b84d5b", "#bd8c74", "#e8a5b2", "#4caf7d", "#54352b"];
@@ -357,6 +370,9 @@ type StoreContextType = {
   updatePriceItem: (category: keyof PriceList, index: number, updates: Partial<PriceItem>) => void;
   addPriceItem: (category: keyof PriceList, item: PriceItem) => void;
   deletePriceItem: (category: keyof PriceList, index: number) => void;
+  addCampaign: (c: Omit<Campaign, "id">) => void;
+  updateCampaign: (id: string, updates: Partial<Campaign>) => void;
+  deleteCampaign: (id: string) => void;
 };
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -433,6 +449,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           appointmentSettings: parsed.appointmentSettings
             ? { ...DEFAULT_APPOINTMENT_SETTINGS, ...parsed.appointmentSettings, categories: Array.isArray(parsed.appointmentSettings.categories) ? parsed.appointmentSettings.categories : DEFAULT_APPOINTMENT_SETTINGS.categories }
             : DEFAULT_APPOINTMENT_SETTINGS,
+          campaigns: Array.isArray(parsed.campaigns) ? parsed.campaigns : [],
         };
       }
     } catch { /* empty */ }
@@ -465,6 +482,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             appointmentSettings: c.appointmentSettings
               ? { ...DEFAULT_APPOINTMENT_SETTINGS, ...c.appointmentSettings, categories: Array.isArray(c.appointmentSettings.categories) ? c.appointmentSettings.categories : DEFAULT_APPOINTMENT_SETTINGS.categories }
               : DEFAULT_APPOINTMENT_SETTINGS,
+            campaigns: Array.isArray(c.campaigns) ? c.campaigns : [],
           };
           setSiteContent(merged);
           try { localStorage.setItem("bw_site_content", JSON.stringify(merged)); } catch { /* empty */ }
@@ -628,6 +646,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         appointmentSettings: c.appointmentSettings
           ? { ...DEFAULT_APPOINTMENT_SETTINGS, ...c.appointmentSettings, categories: Array.isArray(c.appointmentSettings.categories) ? c.appointmentSettings.categories : DEFAULT_APPOINTMENT_SETTINGS.categories }
           : DEFAULT_APPOINTMENT_SETTINGS,
+        campaigns: Array.isArray(c.campaigns) ? c.campaigns : [],
       };
       isSSEUpdate.current = true;
       siteContentRef.current = merged;
@@ -952,6 +971,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       priceList: { ...prev.priceList, [category]: prev.priceList[category].filter((_, i) => i !== index) },
     }));
 
+  const addCampaign = (c: Omit<Campaign, "id">) =>
+    setSiteContent(prev => ({ ...prev, campaigns: [...(prev.campaigns ?? []), { ...c, id: uid() }] }));
+
+  const updateCampaign = (id: string, updates: Partial<Campaign>) =>
+    setSiteContent(prev => ({ ...prev, campaigns: (prev.campaigns ?? []).map(c => c.id === id ? { ...c, ...updates } : c) }));
+
+  const deleteCampaign = (id: string) =>
+    setSiteContent(prev => ({ ...prev, campaigns: (prev.campaigns ?? []).filter(c => c.id !== id) }));
+
   return (
     <StoreContext.Provider value={{
       appointments, addAppointment, updateAppointmentStatus,
@@ -971,6 +999,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       siteContentReady,
       siteContent, updateSiteContent, updateStoreProduct, addStoreProduct, deleteStoreProduct, addGalleryItem, deleteGalleryItem, addStaffMember, updateStaffMember, deleteStaffMember, reorderStaffMembers,
       updatePriceItem, addPriceItem, deletePriceItem,
+      addCampaign, updateCampaign, deleteCampaign,
     }}>
       {children}
     </StoreContext.Provider>
