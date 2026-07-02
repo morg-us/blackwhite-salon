@@ -135,3 +135,13 @@
 2026/07/02-12:15:17.508 1e72 compacted to: files[ 0 0 1 0 0 0 0 ]
 2026/07/02-12:15:17.508 1e72 Delete type=2 #37
 2026/07/02-12:15:17.508 1e72 Manual compaction at level-1 from '\x00\x14\x00\x00\xc8\x0d\x00l\x00o\x00c\x00a\x00l\x00_\x00s\x00t\x00o\x00r\x00a\x00g\x00e' @ 4990 : 1 .. '\x00\x12\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/07/02-13:32:39.655 1e71 Level-0 table #40: started
+2026/07/02-13:32:39.816 1e71 Level-0 table #40: 1070363 bytes OK
+2026/07/02-13:32:39.820 1e71 Delete type=2 #35
+2026/07/02-13:32:39.821 1e71 Delete type=0 #36
+2026/07/02-13:35:15.100 1e71 Compacting 1@1 + 1@2 files
+2026/07/02-13:35:15.214 1e71 Generated table #41@1: 6758 keys, 481348 bytes
+2026/07/02-13:35:15.214 1e71 Compacted 1@1 + 1@2 files => 481348 bytes
+2026/07/02-13:35:15.226 1e71 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/07/02-13:35:15.226 1e71 Delete type=2 #38
+2026/07/02-13:35:15.226 1e71 Delete type=2 #40

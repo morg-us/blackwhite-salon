@@ -1,6 +1,8 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
+import { existsSync } from "fs";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
@@ -65,12 +67,25 @@ app.use(
 
 app.use("/api", router);
 
-app.get("/", (_req, res) => {
-  res.json({ status: "ok" });
-});
-
-app.use((_req, res) => {
-  res.status(404).json({ error: "Not found" });
-});
+// Production: serve built frontend static files and SPA fallback
+if (process.env.NODE_ENV === "production") {
+  const frontendDist = path.resolve(process.cwd(), "artifacts/bw-salon/dist/public");
+  if (existsSync(frontendDist)) {
+    app.use(express.static(frontendDist));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(frontendDist, "index.html"));
+    });
+  } else {
+    app.get("/", (_req, res) => res.json({ status: "ok" }));
+    app.use((_req, res) => res.status(404).json({ error: "Not found" }));
+  }
+} else {
+  app.get("/", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+  app.use((_req, res) => {
+    res.status(404).json({ error: "Not found" });
+  });
+}
 
 export default app;

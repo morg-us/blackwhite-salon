@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "7Gxyo2rgFRG2EtWCMejxZ"
+uri = "file://bw-salon-render.zip"
+type = "unspecified"
+title = "BW Salon — Render.com Production ZIP"
