@@ -1,6 +1,5 @@
 import { execSync } from "node:child_process";
 import { Client, LocalAuth } from "whatsapp-web.js";
-import qrcode from "qrcode-terminal";
 import { logger } from "./logger";
 
 export type WhatsAppStatus =
@@ -42,6 +41,14 @@ export function getWhatsAppQr(): string | null {
   return currentQr;
 }
 
+export function getWhatsAppPhone(): string | null {
+  try {
+    return (client as any)?.info?.wid?.user ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function getWhatsAppClient(): Client | null {
   return client;
 }
@@ -72,8 +79,7 @@ export async function initWhatsApp(): Promise<Client> {
   client.on("qr", (qr: string) => {
     currentStatus = "qr_pending";
     currentQr = qr;
-    logger.info("WhatsApp QR kodu oluşturuldu — terminalde tarayın");
-    qrcode.generate(qr, { small: true });
+    logger.info("WhatsApp QR kodu hazır — admin panelinden tarayın");
   });
 
   client.on("authenticated", () => {
@@ -91,7 +97,8 @@ export async function initWhatsApp(): Promise<Client> {
   client.on("ready", () => {
     currentStatus = "ready";
     currentQr = null;
-    logger.info("WhatsApp istemcisi hazır");
+    const phone = getWhatsAppPhone();
+    logger.info({ phone }, "WhatsApp istemcisi hazır");
   });
 
   client.on("disconnected", (reason: string) => {
@@ -105,9 +112,25 @@ export async function initWhatsApp(): Promise<Client> {
   return client;
 }
 
+export async function logoutWhatsApp(): Promise<void> {
+  if (!client) return;
+  try {
+    await client.logout();
+  } catch { /* ignore */ }
+  try {
+    await client.destroy();
+  } catch { /* ignore */ }
+  client = null;
+  currentStatus = "disconnected";
+  currentQr = null;
+  logger.info("WhatsApp oturumu kapatıldı");
+}
+
 export async function destroyWhatsApp(): Promise<void> {
   if (!client) return;
-  await client.destroy();
+  try {
+    await client.destroy();
+  } catch { /* ignore */ }
   client = null;
   currentStatus = "disconnected";
   currentQr = null;

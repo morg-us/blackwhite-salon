@@ -3,6 +3,7 @@ import { useStore } from "@/lib/store";
 import { AdminFinance } from "@/components/AdminFinance";
 import { AdminStock } from "@/components/AdminStock";
 import { AdminContent } from "@/components/AdminContent";
+import { AdminWhatsApp } from "@/components/AdminWhatsApp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -147,6 +148,7 @@ export function AdminPanel() {
               { value: "randevular", label: `Randevular (${appointments.length})` },
               { value: "yorumlar", label: `Yorumlar (${reviews.length})` },
               { value: "mesajlar", label: `Mesajlar (${messages.length})` },
+              { value: "whatsapp", label: "💬 WhatsApp" },
               { value: "hesap", label: "🔑 Admin Hesabı" },
             ].map(tab => (
               <TabsTrigger
@@ -311,6 +313,13 @@ export function AdminPanel() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          </TabsContent>
+
+          {/* ── WhatsApp Yönetimi ── */}
+          <TabsContent value="whatsapp">
+            <div className="bg-card border border-border rounded-xl p-4 md:p-6 shadow-lg">
+              <AdminWhatsApp />
             </div>
           </TabsContent>
 

@@ -1,5 +1,6 @@
 import { db } from "@workspace/db";
 import { smsNotificationsTable } from "@workspace/db";
+import { sendWhatsAppMessage, getWhatsAppStatus } from "../lib/whatsapp";
 
 export async function sendWhatsApp(params: {
   to: string;
@@ -7,7 +8,15 @@ export async function sendWhatsApp(params: {
   message: string;
   appointmentId?: number;
 }): Promise<void> {
-  const status = await trySendWhatsApp(params.to, params.message);
+  const waStatus = getWhatsAppStatus();
+
+  let status: string;
+  if (waStatus === "ready") {
+    const ok = await sendWhatsAppMessage(params.to, params.message);
+    status = ok ? "sent" : "failed:send_error";
+  } else {
+    status = "simulated";
+  }
 
   await db.insert(smsNotificationsTable).values({
     to: params.to,
@@ -17,37 +26,4 @@ export async function sendWhatsApp(params: {
     appointmentId: params.appointmentId ?? null,
     status,
   });
-}
-
-async function trySendWhatsApp(to: string, message: string): Promise<string> {
-  const phoneId = process.env.WHATSAPP_PHONE_ID;
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-
-  if (!phoneId || !token) return "simulated";
-
-  const phone = to.replace(/[\s+\-()]/g, "");
-  try {
-    const resp = await fetch(
-      `https://graph.facebook.com/v19.0/${phoneId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: phone,
-          type: "text",
-          text: { body: message },
-        }),
-      }
-    );
-    const json = (await resp.json()) as { messages?: { id: string }[] };
-    return json.messages?.[0]?.id
-      ? "sent"
-      : `failed:${JSON.stringify(json).slice(0, 40)}`;
-  } catch {
-    return "failed:network";
-  }
 }

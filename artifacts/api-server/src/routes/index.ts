@@ -15,6 +15,7 @@ import staffUsersRouter from "./salon/staff-users";
 import workEntriesRouter from "./salon/work-entries";
 import siteUsersRouter from "./salon/site-users";
 import smsNotificationsRouter from "./salon/sms-notifications";
+import whatsappRouter from "./salon/whatsapp";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use("/staff-users", staffUsersRouter);
 router.use("/work-entries", workEntriesRouter);
 router.use("/site-users", siteUsersRouter);
 router.use("/sms-notifications", smsNotificationsRouter);
+router.use("/whatsapp", whatsappRouter);
 
 export default router;
