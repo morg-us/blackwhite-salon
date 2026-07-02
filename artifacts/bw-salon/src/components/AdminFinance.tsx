@@ -13,7 +13,7 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from "recharts";
 import {
-  Plus, Trash2, CheckCircle, Receipt, TrendingUp, TrendingDown, Wallet, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, CalendarDays
+  Plus, Trash2, CheckCircle, Receipt, TrendingUp, TrendingDown, Wallet, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, CalendarDays, Users
 } from "lucide-react";
 
 const PRICE_CAT_LABELS: Record<string, string> = {
@@ -526,6 +526,7 @@ function AdisyonTab() {
                   <SelectValue placeholder="Uzman seçin" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Farketmez">Farketmez</SelectItem>
                   {siteContent.staffMembers.map(s => (
                     <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
                   ))}
@@ -1242,22 +1243,280 @@ function StokFinansTab() {
   );
 }
 
+// ─── Uzman Performans Tab ─────────────────────────────────────────────────────
+function UzmanPerformansTab() {
+  const { adisyonlar, siteContent } = useStore();
+  const today = new Date();
+  const [selYear, setSelYear] = useState(today.getFullYear());
+  const [selMonth, setSelMonth] = useState(today.getMonth());
+  const [selStaff, setSelStaff] = useState<string>("all");
+
+  const staffNames = useMemo(() => {
+    const names = new Set<string>();
+    siteContent.staffMembers?.forEach(s => names.add(s.name));
+    adisyonlar.forEach(a => { if (a.staff && a.staff !== "Farketmez") names.add(a.staff); });
+    return Array.from(names);
+  }, [siteContent.staffMembers, adisyonlar]);
+
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const todayAdisyonlar = useMemo(() =>
+    adisyonlar.filter(a => {
+      const d = new Date(a.date);
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return k === todayKey && a.status === "kapali";
+    }), [adisyonlar, todayKey]);
+
+  const todayStaffStats = useMemo(() => {
+    const map: Record<string, { count: number; total: number }> = {};
+    todayAdisyonlar.forEach(a => {
+      const key = a.staff || "Belirtilmemiş";
+      if (!map[key]) map[key] = { count: 0, total: 0 };
+      map[key].count++;
+      map[key].total += a.total;
+    });
+    return map;
+  }, [todayAdisyonlar]);
+
+  const monthAdisyonlar = useMemo(() =>
+    adisyonlar.filter(a => {
+      const d = new Date(a.date);
+      return d.getFullYear() === selYear && d.getMonth() === selMonth && a.status === "kapali";
+    }), [adisyonlar, selYear, selMonth]);
+
+  const staffStats = useMemo(() => {
+    const map: Record<string, { count: number; total: number; items: string[] }> = {};
+    monthAdisyonlar.forEach(a => {
+      const key = a.staff || "Belirtilmemiş";
+      if (!map[key]) map[key] = { count: 0, total: 0, items: [] };
+      map[key].count++;
+      map[key].total += a.total;
+      a.items.forEach(i => { if (!map[key].items.includes(i.name)) map[key].items.push(i.name); });
+    });
+    return map;
+  }, [monthAdisyonlar]);
+
+  const filteredMonthAdisyonlar = useMemo(() =>
+    selStaff === "all" ? monthAdisyonlar : monthAdisyonlar.filter(a => a.staff === selStaff),
+    [monthAdisyonlar, selStaff]);
+
+  const monthTotal = filteredMonthAdisyonlar.reduce((s, a) => s + a.total, 0);
+  const monthCount = filteredMonthAdisyonlar.length;
+
+  const dailyData = useMemo(() => {
+    const daysInMonth = new Date(selYear, selMonth + 1, 0).getDate();
+    const arr: { gun: number; total: number; count: number }[] = [];
+    for (let d = 1; d <= daysInMonth; d++) arr.push({ gun: d, total: 0, count: 0 });
+    filteredMonthAdisyonlar.forEach(a => {
+      const d = new Date(a.date).getDate() - 1;
+      if (arr[d]) { arr[d].total += a.total; arr[d].count++; }
+    });
+    return arr.filter(d => d.total > 0);
+  }, [filteredMonthAdisyonlar, selYear, selMonth]);
+
+  const prevMonth = () => {
+    if (selMonth === 0) { setSelYear(y => y - 1); setSelMonth(11); }
+    else setSelMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (selMonth === 11) { setSelYear(y => y + 1); setSelMonth(0); }
+    else setSelMonth(m => m + 1);
+  };
+
+  const todayTotal = todayAdisyonlar.reduce((s, a) => s + a.total, 0);
+
+  return (
+    <div className="space-y-6">
+
+      {/* Bugün kartı */}
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+            Bugünkü Performans — {format(today, "d MMMM yyyy, EEEE", { locale: tr })}
+          </h3>
+        </div>
+
+        {Object.keys(todayStaffStats).length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">Bugün henüz kapatılmış adisyon yok.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Object.entries(todayStaffStats).sort((a, b) => b[1].total - a[1].total).map(([name, stats]) => (
+              <div key={name} className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                  style={{ background: PALETTE.rose + "22", color: PALETTE.rose }}>
+                  {name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{name}</p>
+                  <p className="text-xs text-muted-foreground">{stats.count} adisyon</p>
+                </div>
+                <p className="font-bold text-sm shrink-0" style={{ color: PALETTE.green }}>{fmt(stats.total)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-4 pt-2 border-t border-border text-xs text-muted-foreground">
+          <span>Toplam gelir: <span className="font-bold text-foreground">{fmt(todayTotal)}</span></span>
+          <span>{todayAdisyonlar.length} kapalı adisyon</span>
+        </div>
+      </div>
+
+      {/* Ay seçici + uzman filtresi */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
+          <button onClick={prevMonth} className="p-1 rounded hover:bg-muted transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm font-medium min-w-[130px] text-center">
+            {format(new Date(selYear, selMonth, 1), "MMMM yyyy", { locale: tr })}
+          </span>
+          <button onClick={nextMonth} className="p-1 rounded hover:bg-muted transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        <Select value={selStaff} onValueChange={setSelStaff}>
+          <SelectTrigger className="w-48 bg-card border-border">
+            <SelectValue placeholder="Tüm uzmanlar" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tüm Uzmanlar</SelectItem>
+            {staffNames.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Ay KPI'ları */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard label="Aylık Gelir" value={fmt(monthTotal)} icon={<TrendingUp className="w-5 h-5" />} color={PALETTE.green} />
+        <KpiCard label="Adisyon Sayısı" value={String(monthCount)} icon={<Receipt className="w-5 h-5" />} color={PALETTE.rose} />
+        <KpiCard label="Ort. Adisyon" value={monthCount > 0 ? fmt(Math.round(monthTotal / monthCount)) : "0 TL"} icon={<Wallet className="w-5 h-5" />} color={PALETTE.caramel} />
+        <KpiCard label="Aktif Uzman" value={String(Object.keys(staffStats).length)} icon={<Users className="w-5 h-5" />} color={PALETTE.softPink} />
+      </div>
+
+      {/* Uzman bazlı gelir çubukları */}
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+          {format(new Date(selYear, selMonth, 1), "MMMM yyyy", { locale: tr })} — Uzman Bazlı Gelir
+        </h3>
+        {Object.keys(staffStats).length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">Bu ay kapatılmış adisyon yok.</p>
+        ) : (
+          <div className="space-y-3">
+            {Object.entries(staffStats).sort((a, b) => b[1].total - a[1].total).map(([name, stats]) => {
+              const grandTotal = Object.values(staffStats).reduce((s, v) => s + v.total, 0);
+              const pct = grandTotal > 0 ? (stats.total / grandTotal) * 100 : 0;
+              return (
+                <div key={name} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                        style={{ background: PALETTE.rose + "22", color: PALETTE.rose }}>
+                        {name.charAt(0)}
+                      </div>
+                      <span className="font-medium">{name}</span>
+                      <span className="text-xs text-muted-foreground">{stats.count} adisyon</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground">{pct.toFixed(1)}%</span>
+                      <span className="font-bold" style={{ color: PALETTE.green }}>{fmt(stats.total)}</span>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: PALETTE.rose }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Günlük çubuk grafik */}
+      {dailyData.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">
+            Günlük Gelir — {selStaff === "all" ? "Tüm Uzmanlar" : selStaff}
+          </h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={dailyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+              <XAxis dataKey="gun" tick={{ fill: "#888", fontSize: 11 }} tickFormatter={v => `${v}.`} />
+              <YAxis tick={{ fill: "#888", fontSize: 11 }} tickFormatter={v => v >= 1000 ? (v / 1000).toFixed(0) + "k" : String(v)} />
+              <Tooltip
+                formatter={(val: number) => [fmt(val), "Gelir"]}
+                labelFormatter={v => `${v}. gün`}
+                contentStyle={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 8 }}
+              />
+              <Bar dataKey="total" name="Gelir" fill={PALETTE.rose} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Detay tablosu */}
+      {filteredMonthAdisyonlar.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">
+            {format(new Date(selYear, selMonth, 1), "MMMM yyyy", { locale: tr })} — Adisyon Detayları
+          </h3>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tarih</TableHead>
+                  <TableHead>Müşteri</TableHead>
+                  <TableHead>Uzman</TableHead>
+                  <TableHead>Hizmetler</TableHead>
+                  <TableHead className="text-right">Toplam</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...filteredMonthAdisyonlar]
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .map(a => (
+                    <TableRow key={a.id}>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {format(new Date(a.date), "d MMM HH:mm", { locale: tr })}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">{a.customerName}</TableCell>
+                      <TableCell className="text-sm">{a.staff}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                        {a.items.map(i => i.name).join(", ")}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-sm" style={{ color: PALETTE.green }}>
+                        {fmt(a.total)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Export ──────────────────────────────────────────────────────────────
 export function AdminFinance() {
   return (
     <Tabs defaultValue="ozet" className="w-full">
-      <TabsList className="mb-6 grid w-full grid-cols-5 bg-background border border-border rounded-lg p-1">
+      <TabsList className="mb-6 grid w-full grid-cols-6 bg-background border border-border rounded-lg p-1">
         <TabsTrigger value="ozet" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Özet</TabsTrigger>
         <TabsTrigger value="adisyon" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Adisyon</TabsTrigger>
         <TabsTrigger value="gelir-gider" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Gelir / Gider</TabsTrigger>
         <TabsTrigger value="urun" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Ürün Analizi</TabsTrigger>
         <TabsTrigger value="stok" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">📦 Stok Finans</TabsTrigger>
+        <TabsTrigger value="uzman" className="text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">👤 Uzman</TabsTrigger>
       </TabsList>
       <TabsContent value="ozet"><OzetTab /></TabsContent>
       <TabsContent value="adisyon"><AdisyonTab /></TabsContent>
       <TabsContent value="gelir-gider"><GelirGiderTab /></TabsContent>
       <TabsContent value="urun"><UrunAnalizTab /></TabsContent>
       <TabsContent value="stok"><StokFinansTab /></TabsContent>
+      <TabsContent value="uzman"><UzmanPerformansTab /></TabsContent>
     </Tabs>
   );
 }
