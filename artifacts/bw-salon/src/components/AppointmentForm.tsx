@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { CalendarIcon, AlertTriangle, Info } from "lucide-react";
-import { format, startOfDay } from "date-fns";
+import { format, startOfDay, isToday } from "date-fns";
 import { tr } from "date-fns/locale";
 
 import { useToast } from "@/hooks/use-toast";
@@ -110,12 +110,28 @@ export function AppointmentForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDateKey, takenSlots, allStaff.join(","), allSlots.join(",")]);
 
-  // Zaman slotu kullanılabilirliği
+  // Şu anki saat "HH:MM" formatında (geçmiş saat kontrolü için)
+  const nowTimeStr = useMemo(() => {
+    const n = new Date();
+    return `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
+  }, []); // mount anında bir kez hesapla
+
+  // Seçilen gün bugünse ve saat geçmişse slot pasif
+  const isSlotPast = (time: string): boolean => {
+    if (!watchedDate) return false;
+    if (!isToday(watchedDate)) return false;
+    return time <= nowTimeStr;
+  };
+
+  // Zaman slotu kullanılabilirliği (dolu veya geçmiş)
   const slotAvailability = useMemo(() => {
     if (!selectedDateKey) return {} as Record<string, boolean>;
     const result: Record<string, boolean> = {};
     allSlots.forEach(time => {
-      if (!watchedStaff) {
+      const past = watchedDate ? (isToday(watchedDate) && time <= nowTimeStr) : false;
+      if (past) {
+        result[time] = true; // geçmiş = disabled
+      } else if (!watchedStaff) {
         result[time] = false;
       } else if (watchedStaff === "Farketmez") {
         result[time] = isSlotTakenForAll(selectedDateKey, time);
@@ -125,7 +141,7 @@ export function AppointmentForm() {
     });
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDateKey, watchedStaff, takenSlots]);
+  }, [selectedDateKey, watchedStaff, takenSlots, watchedDate, nowTimeStr]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     // Çift kontrol — submit anında da doğrula
@@ -353,17 +369,19 @@ export function AppointmentForm() {
                         </FormControl>
                         <SelectContent>
                           {allSlots.map(time => {
-                            const taken = selectedDateKey && watchedStaff
+                            const past = isSlotPast(time);
+                            const taken = !past && selectedDateKey && watchedStaff
                               ? (slotAvailability[time] ?? false)
                               : false;
+                            const disabled = past || taken;
                             return (
                               <SelectItem
                                 key={time}
                                 value={time}
-                                disabled={taken}
-                                className={taken ? "opacity-40 cursor-not-allowed line-through" : ""}
+                                disabled={disabled}
+                                className={disabled ? "opacity-40 cursor-not-allowed line-through" : ""}
                               >
-                                {time}{taken ? " — Dolu" : ""}
+                                {time}{past ? " — Geçmiş" : taken ? " — Dolu" : ""}
                               </SelectItem>
                             );
                           })}

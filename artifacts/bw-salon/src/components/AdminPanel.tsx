@@ -19,7 +19,7 @@ export function AdminPanel() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const { appointments, messages, users, reviews, deleteReview, transactions, updateAppointmentStatus, siteContent, updateSiteContent } = useStore();
+  const { appointments, messages, users, reviews, deleteReview, transactions, updateAppointmentStatus, deleteAppointment, siteContent, updateSiteContent } = useStore();
 
   const adminCreds = siteContent.adminCredentials ?? { username: "admin", password: "admin123" };
 
@@ -248,6 +248,7 @@ export function AdminPanel() {
               appointments={appointments}
               getCategoryLabel={getCategoryLabel}
               updateAppointmentStatus={updateAppointmentStatus}
+              deleteAppointment={deleteAppointment}
             />
           </TabsContent>
 
@@ -479,10 +480,12 @@ function RandevuCalendar({
   appointments,
   getCategoryLabel,
   updateAppointmentStatus,
+  deleteAppointment,
 }: {
   appointments: Appointment[];
   getCategoryLabel: (key: string) => string;
   updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
+  deleteAppointment: (id: string) => Promise<void>;
 }) {
   const today = startOfDay(new Date());
 
@@ -694,12 +697,23 @@ function RandevuCalendar({
                     <p className="text-xs text-muted-foreground">{app.phone}</p>
                   </div>
 
-                  {/* Durum toggle */}
-                  <div className="shrink-0">
+                  {/* Durum toggle + Sil */}
+                  <div className="shrink-0 flex items-center gap-2">
                     <AppointmentStatusToggle
                       status={(app.status ?? "pending") as AppointmentStatus}
                       onChange={s => updateAppointmentStatus(app.id, s)}
                     />
+                    <button
+                      onClick={() => {
+                        if (confirm(`"${app.name}" — ${app.date} ${app.time} randevusunu silmek istediğinizden emin misiniz?`)) {
+                          deleteAppointment(app.id);
+                        }
+                      }}
+                      title="Randevuyu sil"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}

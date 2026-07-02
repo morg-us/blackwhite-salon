@@ -298,6 +298,7 @@ type StoreContextType = {
   appointments: Appointment[];
   addAppointment: (app: Omit<Appointment, "id">) => Promise<void>;
   updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
+  deleteAppointment: (id: string) => Promise<void>;
   messages: Message[];
   addMessage: (msg: Omit<Message, "id">) => void;
   cart: CartItem[];
@@ -679,6 +680,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     api(`/appointments/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }).catch(console.error);
   };
 
+  const deleteAppointment = async (id: string): Promise<void> => {
+    setAppointments(prev => prev.filter(a => a.id !== id));
+    await api(`/appointments/${id}`, { method: "DELETE" }).catch(console.error);
+  };
+
   // ── Messages ──────────────────────────────────────────────
   const addMessage = (msg: Omit<Message, "id">) => {
     const tempId = uid();
@@ -982,7 +988,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   return (
     <StoreContext.Provider value={{
-      appointments, addAppointment, updateAppointmentStatus,
+      appointments, addAppointment, updateAppointmentStatus, deleteAppointment,
       messages, addMessage,
       cart, isCartOpen, setIsCartOpen, addToCart, updateCartItem, removeFromCart, clearCart,
       orders, addOrder,
