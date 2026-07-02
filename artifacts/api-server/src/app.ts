@@ -65,4 +65,12 @@ app.use(
 
 app.use("/api", router);
 
+app.get("/", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
+app.use((_req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
 export default app;
