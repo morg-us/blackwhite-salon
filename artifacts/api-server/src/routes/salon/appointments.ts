@@ -5,7 +5,14 @@ import { getAuth } from "@clerk/express";
 import { eq } from "drizzle-orm";
 import { sendSms } from "../../services/sms";
 import { sendWhatsApp } from "../../services/whatsapp";
-import { getWhatsAppTemplate, renderTemplate } from "../../lib/whatsapp";
+import {
+  getWhatsAppTemplate,
+  getCustomerTemplate,
+  renderTemplate,
+  normalizeTurkishPhone,
+  sendWhatsAppMessage,
+} from "../../lib/whatsapp";
+import { logger } from "../../lib/logger";
 
 const router = Router();
 
@@ -25,13 +32,17 @@ router.post("/", async (req, res) => {
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
     const [created] = await db.insert(appointmentsTable).values(parsed.data).returning();
 
+    // Personel ve müşteri bildirimleri birbirinden bağımsız — biri hata verse diğeri etkilenmez
     notifyStaff(created).catch(() => {});
+    notifyCustomer(created).catch(() => {});
 
     res.status(201).json(created);
   } catch {
     res.status(500).json({ error: "Failed to create appointment" });
   }
 });
+
+// ── Personel bildirimi ────────────────────────────────────────────────────────
 
 async function notifyStaff(appt: typeof appointmentsTable.$inferSelect) {
   const staffList = await db.select().from(staffUsersTable);
@@ -79,6 +90,36 @@ async function notifyStaff(appt: typeof appointmentsTable.$inferSelect) {
       });
     })
   );
+}
+
+// ── Müşteri bildirimi ─────────────────────────────────────────────────────────
+
+async function notifyCustomer(appt: typeof appointmentsTable.$inferSelect) {
+  if (!appt.phone) {
+    logger.info({ apptId: appt.id }, "Müşteri telefonu yok — müşteri bildirimi atlanıyor");
+    return;
+  }
+
+  try {
+    const msg = renderTemplate(getCustomerTemplate(), {
+      musteri: appt.name,
+      tarih: appt.date,
+      saat: appt.time,
+      hizmet: appt.category,
+    });
+
+    const chatId = normalizeTurkishPhone(appt.phone);
+    const sent = await sendWhatsAppMessage(chatId, msg);
+
+    if (sent) {
+      logger.info({ apptId: appt.id, chatId }, "Müşteri WhatsApp bildirimi gönderildi");
+    } else {
+      logger.warn({ apptId: appt.id }, "Müşteri WhatsApp bildirimi gönderilemedi (WA hazır değil)");
+    }
+  } catch (err) {
+    // Müşteri numarası hatalı olsa bile sistem çalışmaya devam eder
+    logger.warn({ err, apptId: appt.id }, "Müşteri WhatsApp bildirimi sırasında hata — personel bildirimleri etkilenmez");
+  }
 }
 
 router.get("/my", async (req, res) => {

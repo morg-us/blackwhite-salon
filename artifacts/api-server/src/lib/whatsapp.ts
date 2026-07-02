@@ -13,6 +13,8 @@ let client: Client | null = null;
 let currentStatus: WhatsAppStatus = "disconnected";
 let currentQr: string | null = null;
 
+// ── Personel bildirim şablonu ─────────────────────────────────────────────────
+
 export const DEFAULT_TEMPLATE =
   `🚨 YENİ RANDEVU BİLDİRİMİ 🚨\n` +
   `👤 Müşteri: {musteri}\n` +
@@ -31,17 +33,51 @@ export function setWhatsAppTemplate(tpl: string): void {
   notificationTemplate = tpl;
 }
 
+// ── Müşteri onay şablonu ──────────────────────────────────────────────────────
+
+export const DEFAULT_CUSTOMER_TEMPLATE =
+  `Merhaba {musteri}, 🌸\n` +
+  `Black White Güzellik Salonu'ndan oluşturduğunuz randevunuz başarıyla onaylanmıştır. ✂️\n\n` +
+  `📅 Tarih: {tarih}\n` +
+  `⏰ Saat: {saat}\n` +
+  `💅 İşlem: {hizmet}\n\n` +
+  `Randevu saatinden 10 dakika önce salonumuzda olmanızı rica eder, sağlıklı günler dileriz. Sizi görmek için sabırsızlanıyoruz! ✨`;
+
+let customerTemplate: string = DEFAULT_CUSTOMER_TEMPLATE;
+
+export function getCustomerTemplate(): string {
+  return customerTemplate;
+}
+
+export function setCustomerTemplate(tpl: string): void {
+  customerTemplate = tpl;
+}
+
+// ── Şablon render ─────────────────────────────────────────────────────────────
+
 export function renderTemplate(
   tpl: string,
-  vars: { musteri: string; tarih: string; saat: string; hizmet: string; telefon: string }
+  vars: { musteri: string; tarih: string; saat: string; hizmet: string; telefon?: string }
 ): string {
   return tpl
     .replace(/\{musteri\}/g, vars.musteri)
     .replace(/\{tarih\}/g, vars.tarih)
     .replace(/\{saat\}/g, vars.saat)
     .replace(/\{hizmet\}/g, vars.hizmet)
-    .replace(/\{telefon\}/g, vars.telefon);
+    .replace(/\{telefon\}/g, vars.telefon ?? "");
 }
+
+// ── Telefon normalleştirme ────────────────────────────────────────────────────
+
+export function normalizeTurkishPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("90") && digits.length === 12) return `${digits}@c.us`;
+  if (digits.startsWith("0") && digits.length === 11) return `90${digits.slice(1)}@c.us`;
+  if (digits.length === 10) return `90${digits}@c.us`;
+  return `${digits}@c.us`;
+}
+
+// ── Puppeteer / WhatsApp client ───────────────────────────────────────────────
 
 const PUPPETEER_ARGS = [
   "--no-sandbox",
@@ -157,14 +193,6 @@ export async function destroyWhatsApp(): Promise<void> {
   currentStatus = "disconnected";
   currentQr = null;
   logger.info("WhatsApp istemcisi durduruldu");
-}
-
-function normalizeTurkishPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("90") && digits.length === 12) return `${digits}@c.us`;
-  if (digits.startsWith("0") && digits.length === 11) return `90${digits.slice(1)}@c.us`;
-  if (digits.length === 10) return `90${digits}@c.us`;
-  return `${digits}@c.us`;
 }
 
 export async function sendWhatsAppMessage(to: string, message: string): Promise<boolean> {

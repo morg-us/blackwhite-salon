@@ -2,7 +2,13 @@ import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from './stripeClient';
 import app from "./app";
 import { logger } from "./lib/logger";
-import { initWhatsApp, setWhatsAppTemplate, DEFAULT_TEMPLATE } from "./lib/whatsapp";
+import {
+  initWhatsApp,
+  setWhatsAppTemplate,
+  setCustomerTemplate,
+  DEFAULT_TEMPLATE,
+  DEFAULT_CUSTOMER_TEMPLATE,
+} from "./lib/whatsapp";
 import { readFile } from "node:fs/promises";
 
 const rawPort = process.env["PORT"];
@@ -10,7 +16,7 @@ if (!rawPort) throw new Error("PORT environment variable is required but was not
 const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) throw new Error(`Invalid PORT value: "${rawPort}"`);
 
-const WA_CONFIG_PATH = "./.whatsapp-config.json";
+export const WA_CONFIG_PATH = "./.whatsapp-config.json";
 
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -39,13 +45,17 @@ async function initStripe() {
 async function loadWhatsAppConfig() {
   try {
     const raw = await readFile(WA_CONFIG_PATH, "utf8");
-    const cfg = JSON.parse(raw) as { template?: string };
+    const cfg = JSON.parse(raw) as { template?: string; customerTemplate?: string };
     if (cfg.template) {
       setWhatsAppTemplate(cfg.template);
-      logger.info("WhatsApp bildirim şablonu dosyadan yüklendi");
+      logger.info("WhatsApp personel şablonu dosyadan yüklendi");
+    }
+    if (cfg.customerTemplate) {
+      setCustomerTemplate(cfg.customerTemplate);
+      logger.info("WhatsApp müşteri şablonu dosyadan yüklendi");
     }
   } catch {
-    // Dosya yoksa varsayılan şablon kullanılır — normal durum
+    // Dosya yoksa varsayılan şablonlar kullanılır — normal durum
   }
 }
 

@@ -10,15 +10,35 @@ import {
   getWhatsAppTemplate,
   setWhatsAppTemplate,
   DEFAULT_TEMPLATE,
+  getCustomerTemplate,
+  setCustomerTemplate,
+  DEFAULT_CUSTOMER_TEMPLATE,
 } from "../../lib/whatsapp";
 import { logger } from "../../lib/logger";
 
 const router = Router();
 const WA_CONFIG_PATH = "./.whatsapp-config.json";
 
-async function saveConfig(template: string) {
-  await writeFile(WA_CONFIG_PATH, JSON.stringify({ template }), "utf8");
+async function readConfig(): Promise<{ template: string; customerTemplate: string }> {
+  try {
+    const raw = await readFile(WA_CONFIG_PATH, "utf8");
+    const cfg = JSON.parse(raw) as { template?: string; customerTemplate?: string };
+    return {
+      template: cfg.template ?? DEFAULT_TEMPLATE,
+      customerTemplate: cfg.customerTemplate ?? DEFAULT_CUSTOMER_TEMPLATE,
+    };
+  } catch {
+    return { template: DEFAULT_TEMPLATE, customerTemplate: DEFAULT_CUSTOMER_TEMPLATE };
+  }
 }
+
+async function saveConfig(patch: Partial<{ template: string; customerTemplate: string }>) {
+  const current = await readConfig();
+  const merged = { ...current, ...patch };
+  await writeFile(WA_CONFIG_PATH, JSON.stringify(merged), "utf8");
+}
+
+// ── Durum / QR / Çıkış ───────────────────────────────────────────────────────
 
 router.get("/status", (_req, res) => {
   res.json({ status: getWhatsAppStatus(), phone: getWhatsAppPhone() });
@@ -51,7 +71,9 @@ router.post("/logout", async (_req, res) => {
   }
 });
 
-router.get("/template", async (_req, res) => {
+// ── Personel şablonu ──────────────────────────────────────────────────────────
+
+router.get("/template", (_req, res) => {
   res.json({ template: getWhatsAppTemplate(), default: DEFAULT_TEMPLATE });
 });
 
@@ -62,11 +84,11 @@ router.patch("/template", async (req, res) => {
   }
   setWhatsAppTemplate(template);
   try {
-    await saveConfig(template);
-    logger.info("WhatsApp bildirim şablonu güncellendi");
+    await saveConfig({ template });
+    logger.info("WhatsApp personel şablonu güncellendi");
     res.json({ ok: true, template });
   } catch (err) {
-    logger.error({ err }, "WhatsApp şablonu kaydedilemedi");
+    logger.error({ err }, "WhatsApp personel şablonu kaydedilemedi");
     res.status(500).json({ error: "Şablon kaydedilemedi" });
   }
 });
@@ -74,10 +96,43 @@ router.patch("/template", async (req, res) => {
 router.post("/template/reset", async (_req, res) => {
   setWhatsAppTemplate(DEFAULT_TEMPLATE);
   try {
-    await saveConfig(DEFAULT_TEMPLATE);
+    await saveConfig({ template: DEFAULT_TEMPLATE });
     res.json({ ok: true, template: DEFAULT_TEMPLATE });
   } catch (err) {
-    logger.error({ err }, "WhatsApp şablonu sıfırlanamadı");
+    logger.error({ err }, "WhatsApp personel şablonu sıfırlanamadı");
+    res.status(500).json({ error: "Şablon sıfırlanamadı" });
+  }
+});
+
+// ── Müşteri şablonu ───────────────────────────────────────────────────────────
+
+router.get("/customer-template", (_req, res) => {
+  res.json({ template: getCustomerTemplate(), default: DEFAULT_CUSTOMER_TEMPLATE });
+});
+
+router.patch("/customer-template", async (req, res) => {
+  const { template } = req.body as { template?: string };
+  if (!template || typeof template !== "string") {
+    return res.status(400).json({ error: "template alanı gereklidir" });
+  }
+  setCustomerTemplate(template);
+  try {
+    await saveConfig({ customerTemplate: template });
+    logger.info("WhatsApp müşteri şablonu güncellendi");
+    res.json({ ok: true, template });
+  } catch (err) {
+    logger.error({ err }, "WhatsApp müşteri şablonu kaydedilemedi");
+    res.status(500).json({ error: "Şablon kaydedilemedi" });
+  }
+});
+
+router.post("/customer-template/reset", async (_req, res) => {
+  setCustomerTemplate(DEFAULT_CUSTOMER_TEMPLATE);
+  try {
+    await saveConfig({ customerTemplate: DEFAULT_CUSTOMER_TEMPLATE });
+    res.json({ ok: true, template: DEFAULT_CUSTOMER_TEMPLATE });
+  } catch (err) {
+    logger.error({ err }, "WhatsApp müşteri şablonu sıfırlanamadı");
     res.status(500).json({ error: "Şablon sıfırlanamadı" });
   }
 });

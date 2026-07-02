@@ -12,6 +12,8 @@ import {
   MessageSquare,
   RotateCcw,
   Save,
+  User,
+  Users,
 } from "lucide-react";
 
 type WAStatus = "disconnected" | "qr_pending" | "authenticated" | "ready" | "auth_failure";
@@ -21,7 +23,7 @@ interface StatusData {
   phone: string | null;
 }
 
-const PLACEHOLDERS = [
+const STAFF_PLACEHOLDERS = [
   { key: "{musteri}", label: "Müşteri Adı" },
   { key: "{tarih}", label: "Randevu Tarihi" },
   { key: "{saat}", label: "Randevu Saati" },
@@ -29,7 +31,36 @@ const PLACEHOLDERS = [
   { key: "{telefon}", label: "Müşteri Telefonu" },
 ];
 
-function TemplateEditor() {
+const CUSTOMER_PLACEHOLDERS = [
+  { key: "{musteri}", label: "Müşteri Adı" },
+  { key: "{tarih}", label: "Randevu Tarihi" },
+  { key: "{saat}", label: "Randevu Saati" },
+  { key: "{hizmet}", label: "Hizmet / İşlem" },
+];
+
+// ── Yeniden kullanılabilir şablon editörü ─────────────────────────────────────
+
+interface TemplateEditorProps {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  getEndpoint: string;
+  patchEndpoint: string;
+  resetEndpoint: string;
+  placeholders: { key: string; label: string }[];
+  previewVars: Record<string, string>;
+}
+
+function TemplateEditor({
+  title,
+  description,
+  icon,
+  getEndpoint,
+  patchEndpoint,
+  resetEndpoint,
+  placeholders,
+  previewVars,
+}: TemplateEditorProps) {
   const [template, setTemplate] = useState("");
   const [defaultTemplate, setDefaultTemplate] = useState("");
   const [loading, setLoading] = useState(true);
@@ -37,7 +68,7 @@ function TemplateEditor() {
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/whatsapp/template")
+    fetch(getEndpoint)
       .then(r => r.json())
       .then((d: { template: string; default: string }) => {
         setTemplate(d.template);
@@ -45,13 +76,13 @@ function TemplateEditor() {
       })
       .catch(() => setMsg({ type: "err", text: "Şablon yüklenemedi" }))
       .finally(() => setLoading(false));
-  }, []);
+  }, [getEndpoint]);
 
   const handleSave = async () => {
     setSaving(true);
     setMsg(null);
     try {
-      const res = await fetch("/api/whatsapp/template", {
+      const res = await fetch(patchEndpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ template }),
@@ -70,7 +101,7 @@ function TemplateEditor() {
     setSaving(true);
     setMsg(null);
     try {
-      const res = await fetch("/api/whatsapp/template/reset", { method: "POST" });
+      const res = await fetch(resetEndpoint, { method: "POST" });
       if (!res.ok) throw new Error();
       setTemplate(defaultTemplate);
       setMsg({ type: "ok", text: "Şablon varsayılana sıfırlandı." });
@@ -85,6 +116,11 @@ function TemplateEditor() {
     setTemplate(t => t + key);
   };
 
+  const preview = placeholders.reduce(
+    (acc, p) => acc.replace(new RegExp(p.key.replace(/[{}]/g, "\\$&"), "g"), previewVars[p.key] ?? p.key),
+    template
+  );
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
@@ -96,14 +132,17 @@ function TemplateEditor() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <MessageSquare className="w-4 h-4 text-primary" />
-        <h3 className="font-semibold text-sm">Bildirim Mesajı Şablonu</h3>
+        {icon}
+        <div>
+          <h3 className="font-semibold text-sm">{title}</h3>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
       </div>
 
       <div className="p-3 bg-muted/30 border border-border/50 rounded-xl">
         <p className="text-xs text-muted-foreground mb-2 font-medium">Kullanılabilir değişkenler — tıklayarak ekleyin:</p>
         <div className="flex flex-wrap gap-2">
-          {PLACEHOLDERS.map(p => (
+          {placeholders.map(p => (
             <button
               key={p.key}
               onClick={() => insertPlaceholder(p.key)}
@@ -121,7 +160,7 @@ function TemplateEditor() {
         onChange={e => setTemplate(e.target.value)}
         rows={8}
         className="font-mono text-sm bg-background border-border resize-none"
-        placeholder="Bildirim mesajı şablonunu buraya yazın..."
+        placeholder="Mesaj şablonunu buraya yazın..."
       />
 
       {msg && (
@@ -152,18 +191,13 @@ function TemplateEditor() {
 
       <div className="p-3 bg-muted/20 border border-border/40 rounded-xl">
         <p className="text-xs text-muted-foreground font-medium mb-1">Örnek çıktı:</p>
-        <pre className="text-xs text-foreground whitespace-pre-wrap font-sans leading-relaxed">
-          {template
-            .replace(/\{musteri\}/g, "Ayşe Kaya")
-            .replace(/\{tarih\}/g, "2026-07-05")
-            .replace(/\{saat\}/g, "14:30")
-            .replace(/\{hizmet\}/g, "Saç Boyama")
-            .replace(/\{telefon\}/g, "0532 123 45 67")}
-        </pre>
+        <pre className="text-xs text-foreground whitespace-pre-wrap font-sans leading-relaxed">{preview}</pre>
       </div>
     </div>
   );
 }
+
+// ── Ana bileşen ───────────────────────────────────────────────────────────────
 
 export function AdminWhatsApp() {
   const [statusData, setStatusData] = useState<StatusData>({ status: "disconnected", phone: null });
@@ -250,7 +284,7 @@ export function AdminWhatsApp() {
         </div>
         <div>
           <h2 className="font-semibold text-base">WhatsApp Entegrasyonu</h2>
-          <p className="text-xs text-muted-foreground">Randevu bildirimlerini WhatsApp üzerinden personellere ilet.</p>
+          <p className="text-xs text-muted-foreground">Randevu bildirimlerini WhatsApp üzerinden personellere ve müşterilere ilet.</p>
         </div>
       </div>
 
@@ -269,7 +303,7 @@ export function AdminWhatsApp() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground border-t border-border/50 pt-3">
-            Yeni randevular alındığında ilgili personele WhatsApp mesajı otomatik gönderilecektir.
+            Yeni randevular alındığında ilgili personele ve müşteriye WhatsApp mesajı otomatik gönderilecektir.
           </p>
           <Button
             variant="outline"
@@ -343,15 +377,56 @@ export function AdminWhatsApp() {
         </div>
       )}
 
-      {/* ── Bildirim Şablonu Editörü ── */}
-      <div className="border-t border-border pt-6">
-        <TemplateEditor />
+      {/* ── Mesaj Şablonları ── */}
+      <div className="border-t border-border pt-6 space-y-8">
+
+        {/* Personel şablonu */}
+        <TemplateEditor
+          title="Personel Bildirim Şablonu"
+          description="Yeni randevu alındığında ilgili personele gönderilir."
+          icon={<Users className="w-4 h-4 text-primary" />}
+          getEndpoint="/api/whatsapp/template"
+          patchEndpoint="/api/whatsapp/template"
+          resetEndpoint="/api/whatsapp/template/reset"
+          placeholders={STAFF_PLACEHOLDERS}
+          previewVars={{
+            "{musteri}": "Ayşe Kaya",
+            "{tarih}": "2026-07-05",
+            "{saat}": "14:30",
+            "{hizmet}": "Saç Boyama",
+            "{telefon}": "0532 123 45 67",
+          }}
+        />
+
+        <div className="border-t border-border/50" />
+
+        {/* Müşteri şablonu */}
+        <TemplateEditor
+          title="Müşteri Onay Şablonu"
+          description="Randevu oluşturulduğu anda müşterinin kendi numarasına gönderilir."
+          icon={<User className="w-4 h-4 text-green-500" />}
+          getEndpoint="/api/whatsapp/customer-template"
+          patchEndpoint="/api/whatsapp/customer-template"
+          resetEndpoint="/api/whatsapp/customer-template/reset"
+          placeholders={CUSTOMER_PLACEHOLDERS}
+          previewVars={{
+            "{musteri}": "Ayşe Kaya",
+            "{tarih}": "2026-07-05",
+            "{saat}": "14:30",
+            "{hizmet}": "Saç Boyama",
+          }}
+        />
       </div>
 
       {/* ── Bilgi kutusu ── */}
       <div className="p-4 bg-muted/30 border border-border/50 rounded-xl text-xs text-muted-foreground">
         <p className="font-medium text-foreground mb-1">💡 Nasıl çalışır?</p>
-        <p>QR kodu taradıktan sonra bağlantı aktif olur. Sunucu kapansa bile oturum saklanır. Şablon değişkenleri gönderim anında gerçek verilerle değiştirilir.</p>
+        <ul className="space-y-1">
+          <li>• Müşteri randevu formunu gönderdiğinde <strong>iki mesaj</strong> tetiklenir.</li>
+          <li>• <strong>Personel</strong> mesajı ilgili çalışanların numarasına gider.</li>
+          <li>• <strong>Müşteri</strong> mesajı formda girilen telefon numarasına gider (90 ülke kodu otomatik eklenir).</li>
+          <li>• Müşteri numarası hatalıysa sistem çökmez — personel bildirimi yine de gönderilir.</li>
+        </ul>
       </div>
     </div>
   );
