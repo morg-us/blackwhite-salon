@@ -3,10 +3,11 @@
 # ══════════════════════════════════════════════════════════════════════════════
 FROM node:24-slim AS builder
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 WORKDIR /app
 
-# pnpm — npm install -g yerine corepack kullan (çok daha az bellek, OOM yaşanmaz)
-# Node.js 24'te corepack dahili gelir, sadece aktive etmek yeterli
+# corepack ile pnpm kur (npm install -g OOM yaşatır)
 RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
 
 # Workspace konfigürasyonu önce kopyala (bağımlılık önbellekleme için)
@@ -14,15 +15,15 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc \
      tsconfig.base.json tsconfig.json ./
 
 # Lib ve artifact paketlerinin package.json dosyaları
-COPY lib/db/package.json                          ./lib/db/
-COPY lib/api-spec/package.json                    ./lib/api-spec/
-COPY lib/api-zod/package.json                     ./lib/api-zod/
-COPY lib/api-client-react/package.json            ./lib/api-client-react/
-COPY lib/integrations-openai-ai-react/package.json  ./lib/integrations-openai-ai-react/
-COPY lib/integrations-openai-ai-server/package.json ./lib/integrations-openai-ai-server/
-COPY artifacts/api-server/package.json  ./artifacts/api-server/
-COPY artifacts/bw-salon/package.json    ./artifacts/bw-salon/
-COPY scripts/package.json               ./scripts/
+COPY lib/db/package.json                             ./lib/db/
+COPY lib/api-spec/package.json                       ./lib/api-spec/
+COPY lib/api-zod/package.json                        ./lib/api-zod/
+COPY lib/api-client-react/package.json               ./lib/api-client-react/
+COPY lib/integrations-openai-ai-react/package.json   ./lib/integrations-openai-ai-react/
+COPY lib/integrations-openai-ai-server/package.json  ./lib/integrations-openai-ai-server/
+COPY artifacts/api-server/package.json               ./artifacts/api-server/
+COPY artifacts/bw-salon/package.json                 ./artifacts/bw-salon/
+COPY scripts/package.json                            ./scripts/
 
 # puppeteer'in kendi Chrome'unu indirmesini engelle — sistem Chromium kullanacağız
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
@@ -43,26 +44,20 @@ RUN pnpm run build:production
 # ══════════════════════════════════════════════════════════════════════════════
 FROM node:24-slim AS runner
 
-# ── APT güvenilirlik ayarları ─────────────────────────────────────────────────
-# Acquire::Retries=5  → ağ hatasında 5 kez tekrar dener
-# Acquire::http::Timeout=60 → zaman aşımını uzatır (büyük paketler için)
-# ─────────────────────────────────────────────────────────────────────────────
+ENV DEBIAN_FRONTEND=noninteractive
+
+# APT güvenilirlik: 5 retry, 60s timeout
 RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "60";\nAcquire::https::Timeout "60";\n' \
-      > /etc/apt/apt.conf.d/99-retrys
+      > /etc/apt/apt.conf.d/99-retries
 
-# Temel sistem araçları ve CA sertifikaları (küçük, hızlı)
-RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
-# Chromium ve whatsapp-web.js için gerekli sistem bağımlılıkları
-# Not: node:24-slim → Debian bookworm → libasound2 → libasound2t64 olarak yeniden adlandırıldı
+# Chromium ve whatsapp-web.js gereksinimleri — TEK apt-get çağrısı
+# NOT: chromium-sandbox Debian bookworm'da AYRI PAKET DEĞİL, chromium içine dahil
+# NOT: libasound2 → libasound2t64 (Debian bookworm yeniden adlandırdı)
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
+        ca-certificates \
         chromium \
-        chromium-sandbox \
         fonts-freefont-ttf \
-        fonts-noto-color-emoji \
         libnss3 \
         libatk-bridge2.0-0 \
         libcups2 \
@@ -80,7 +75,7 @@ RUN apt-get update -y && \
 
 WORKDIR /app
 
-# pnpm — corepack ile kur (OOM riski yok)
+# corepack ile pnpm kur
 RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
 
 # puppeteer sistem Chromium'u kullansın
@@ -91,16 +86,16 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc \
      tsconfig.base.json tsconfig.json ./
 
-# Paket tanımları (sadece runtime için gerekenler)
-COPY lib/db/package.json                              ./lib/db/
-COPY lib/api-spec/package.json                        ./lib/api-spec/
-COPY lib/api-zod/package.json                         ./lib/api-zod/
-COPY lib/api-client-react/package.json                ./lib/api-client-react/
-COPY lib/integrations-openai-ai-react/package.json    ./lib/integrations-openai-ai-react/
-COPY lib/integrations-openai-ai-server/package.json   ./lib/integrations-openai-ai-server/
-COPY artifacts/api-server/package.json  ./artifacts/api-server/
-COPY artifacts/bw-salon/package.json    ./artifacts/bw-salon/
-COPY scripts/package.json               ./scripts/
+# Paket tanımları
+COPY lib/db/package.json                             ./lib/db/
+COPY lib/api-spec/package.json                       ./lib/api-spec/
+COPY lib/api-zod/package.json                        ./lib/api-zod/
+COPY lib/api-client-react/package.json               ./lib/api-client-react/
+COPY lib/integrations-openai-ai-react/package.json   ./lib/integrations-openai-ai-react/
+COPY lib/integrations-openai-ai-server/package.json  ./lib/integrations-openai-ai-server/
+COPY artifacts/api-server/package.json               ./artifacts/api-server/
+COPY artifacts/bw-salon/package.json                 ./artifacts/bw-salon/
+COPY scripts/package.json                            ./scripts/
 
 # Sadece production bağımlılıklarını kur
 RUN pnpm install --frozen-lockfile --prod
@@ -109,17 +104,14 @@ RUN pnpm install --frozen-lockfile --prod
 COPY --from=builder /app/artifacts/api-server/dist/  ./artifacts/api-server/dist/
 COPY --from=builder /app/artifacts/bw-salon/dist/    ./artifacts/bw-salon/dist/
 
-# WhatsApp oturum verisi için klasör oluştur
-# (Railway/Koyeb'de kalıcı volume olarak mount edilmeli: /app/.wwebjs_auth)
+# WhatsApp oturum verisi için klasör
 RUN mkdir -p .wwebjs_auth
 
-# Uygulama portu (Railway/Koyeb PORT env ile override eder)
 ENV PORT=8080
 ENV NODE_ENV=production
 
 EXPOSE 8080
 
-# Sağlık kontrolü
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD node -e "require('http').get('http://localhost:' + process.env.PORT + '/api/healthz', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
