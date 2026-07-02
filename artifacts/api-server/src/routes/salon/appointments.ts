@@ -5,6 +5,7 @@ import { getAuth } from "@clerk/express";
 import { eq } from "drizzle-orm";
 import { sendSms } from "../../services/sms";
 import { sendWhatsApp } from "../../services/whatsapp";
+import { getWhatsAppTemplate, renderTemplate } from "../../lib/whatsapp";
 
 const router = Router();
 
@@ -52,12 +53,13 @@ async function notifyStaff(appt: typeof appointmentsTable.$inferSelect) {
   if (targets.length === 0) return;
 
   const buildMsg = (_staffName: string) =>
-    `🚨 YENİ RANDEVU BİLDİRİMİ 🚨\n` +
-    `👤 Müşteri: ${appt.name}\n` +
-    `📅 Tarih: ${appt.date}\n` +
-    `⏰ Saat: ${appt.time}\n` +
-    `✂️ Hizmet: ${appt.category}\n` +
-    `📞 Telefon: ${appt.phone}`;
+    renderTemplate(getWhatsAppTemplate(), {
+      musteri: appt.name,
+      tarih: appt.date,
+      saat: appt.time,
+      hizmet: appt.category,
+      telefon: appt.phone ?? "",
+    });
 
   await Promise.all(
     targets.map(async staffUser => {

@@ -2,12 +2,15 @@ import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from './stripeClient';
 import app from "./app";
 import { logger } from "./lib/logger";
-import { initWhatsApp } from "./lib/whatsapp";
+import { initWhatsApp, setWhatsAppTemplate, DEFAULT_TEMPLATE } from "./lib/whatsapp";
+import { readFile } from "node:fs/promises";
 
 const rawPort = process.env["PORT"];
 if (!rawPort) throw new Error("PORT environment variable is required but was not provided.");
 const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) throw new Error(`Invalid PORT value: "${rawPort}"`);
+
+const WA_CONFIG_PATH = "./.whatsapp-config.json";
 
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -33,7 +36,21 @@ async function initStripe() {
   }
 }
 
+async function loadWhatsAppConfig() {
+  try {
+    const raw = await readFile(WA_CONFIG_PATH, "utf8");
+    const cfg = JSON.parse(raw) as { template?: string };
+    if (cfg.template) {
+      setWhatsAppTemplate(cfg.template);
+      logger.info("WhatsApp bildirim şablonu dosyadan yüklendi");
+    }
+  } catch {
+    // Dosya yoksa varsayılan şablon kullanılır — normal durum
+  }
+}
+
 await initStripe();
+await loadWhatsAppConfig();
 
 initWhatsApp().catch((err) => logger.error({ err }, "WhatsApp başlatılamadı"));
 

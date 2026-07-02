@@ -1,12 +1,168 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Wifi, WifiOff, RefreshCw, LogOut, Smartphone, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  CheckCircle2,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  LogOut,
+  Smartphone,
+  Loader2,
+  MessageSquare,
+  RotateCcw,
+  Save,
+} from "lucide-react";
 
 type WAStatus = "disconnected" | "qr_pending" | "authenticated" | "ready" | "auth_failure";
 
 interface StatusData {
   status: WAStatus;
   phone: string | null;
+}
+
+const PLACEHOLDERS = [
+  { key: "{musteri}", label: "Müşteri Adı" },
+  { key: "{tarih}", label: "Randevu Tarihi" },
+  { key: "{saat}", label: "Randevu Saati" },
+  { key: "{hizmet}", label: "Hizmet / İşlem" },
+  { key: "{telefon}", label: "Müşteri Telefonu" },
+];
+
+function TemplateEditor() {
+  const [template, setTemplate] = useState("");
+  const [defaultTemplate, setDefaultTemplate] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/whatsapp/template")
+      .then(r => r.json())
+      .then((d: { template: string; default: string }) => {
+        setTemplate(d.template);
+        setDefaultTemplate(d.default);
+      })
+      .catch(() => setMsg({ type: "err", text: "Şablon yüklenemedi" }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/whatsapp/template", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template }),
+      });
+      if (!res.ok) throw new Error();
+      setMsg({ type: "ok", text: "Şablon başarıyla kaydedildi." });
+    } catch {
+      setMsg({ type: "err", text: "Kayıt sırasında hata oluştu." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!confirm("Şablonu varsayılana sıfırlamak istediğinizden emin misiniz?")) return;
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/whatsapp/template/reset", { method: "POST" });
+      if (!res.ok) throw new Error();
+      setTemplate(defaultTemplate);
+      setMsg({ type: "ok", text: "Şablon varsayılana sıfırlandı." });
+    } catch {
+      setMsg({ type: "err", text: "Sıfırlama sırasında hata oluştu." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const insertPlaceholder = (key: string) => {
+    setTemplate(t => t + key);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
+        <Loader2 className="w-4 h-4 animate-spin" /> Şablon yükleniyor...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <MessageSquare className="w-4 h-4 text-primary" />
+        <h3 className="font-semibold text-sm">Bildirim Mesajı Şablonu</h3>
+      </div>
+
+      <div className="p-3 bg-muted/30 border border-border/50 rounded-xl">
+        <p className="text-xs text-muted-foreground mb-2 font-medium">Kullanılabilir değişkenler — tıklayarak ekleyin:</p>
+        <div className="flex flex-wrap gap-2">
+          {PLACEHOLDERS.map(p => (
+            <button
+              key={p.key}
+              onClick={() => insertPlaceholder(p.key)}
+              className="text-xs font-mono bg-background border border-border px-2 py-1 rounded-lg hover:bg-primary/10 hover:border-primary/40 transition-colors"
+            >
+              {p.key}
+              <span className="text-muted-foreground ml-1.5 font-sans not-italic">→ {p.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <Textarea
+        value={template}
+        onChange={e => setTemplate(e.target.value)}
+        rows={8}
+        className="font-mono text-sm bg-background border-border resize-none"
+        placeholder="Bildirim mesajı şablonunu buraya yazın..."
+      />
+
+      {msg && (
+        <p className={`text-sm px-3 py-2 rounded-lg ${msg.type === "ok" ? "bg-green-500/10 text-green-500" : "bg-destructive/10 text-destructive"}`}>
+          {msg.text}
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Kaydet
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleReset}
+          disabled={saving}
+          className="gap-2 text-muted-foreground"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Varsayıla Sıfırla
+        </Button>
+      </div>
+
+      <div className="p-3 bg-muted/20 border border-border/40 rounded-xl">
+        <p className="text-xs text-muted-foreground font-medium mb-1">Örnek çıktı:</p>
+        <pre className="text-xs text-foreground whitespace-pre-wrap font-sans leading-relaxed">
+          {template
+            .replace(/\{musteri\}/g, "Ayşe Kaya")
+            .replace(/\{tarih\}/g, "2026-07-05")
+            .replace(/\{saat\}/g, "14:30")
+            .replace(/\{hizmet\}/g, "Saç Boyama")
+            .replace(/\{telefon\}/g, "0532 123 45 67")}
+        </pre>
+      </div>
+    </div>
+  );
 }
 
 export function AdminWhatsApp() {
@@ -86,7 +242,9 @@ export function AdminWhatsApp() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <div className="flex items-center gap-3 mb-2">
+
+      {/* ── Başlık ── */}
+      <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
           <Smartphone className="w-5 h-5 text-green-500" />
         </div>
@@ -96,6 +254,7 @@ export function AdminWhatsApp() {
         </div>
       </div>
 
+      {/* ── Bağlı ── */}
       {status === "ready" && (
         <div className="p-5 rounded-xl border border-green-500/30 bg-green-500/5 space-y-4">
           <div className="flex items-center gap-3">
@@ -104,17 +263,14 @@ export function AdminWhatsApp() {
               <p className="font-semibold text-green-500">WhatsApp Hattı Aktif (Bağlı)</p>
               {phone && (
                 <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                  <Wifi className="w-3.5 h-3.5" />
-                  +{phone}
+                  <Wifi className="w-3.5 h-3.5" />+{phone}
                 </p>
               )}
             </div>
           </div>
-
           <p className="text-xs text-muted-foreground border-t border-border/50 pt-3">
             Yeni randevular alındığında ilgili personele WhatsApp mesajı otomatik gönderilecektir.
           </p>
-
           <Button
             variant="outline"
             size="sm"
@@ -124,12 +280,12 @@ export function AdminWhatsApp() {
           >
             {logoutLoading
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Bağlantı kesiliyor...</>
-              : <><LogOut className="w-4 h-4" /> Bağlantıyı Kopar / Çıkış Yap</>
-            }
+              : <><LogOut className="w-4 h-4" /> Bağlantıyı Kopar / Çıkış Yap</>}
           </Button>
         </div>
       )}
 
+      {/* ── QR Bekleniyor ── */}
       {(status === "qr_pending" || status === "authenticated") && (
         <div className="p-5 rounded-xl border border-border bg-background space-y-4">
           <div className="flex items-center justify-between">
@@ -139,9 +295,7 @@ export function AdminWhatsApp() {
                 {status === "authenticated" ? "Kimlik doğrulanıyor..." : "QR Kodu ile Bağlanın"}
               </p>
             </div>
-            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-              Her ~20sn yenilenir
-            </span>
+            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Her ~20sn yenilenir</span>
           </div>
 
           {status === "qr_pending" && qrDataUrl ? (
@@ -166,6 +320,7 @@ export function AdminWhatsApp() {
         </div>
       )}
 
+      {/* ── Bağlantı Kuruluyor ── */}
       {(status === "disconnected" || status === "auth_failure") && (
         <div className="p-5 rounded-xl border border-border bg-background space-y-3">
           <div className="flex items-center gap-3">
@@ -176,7 +331,7 @@ export function AdminWhatsApp() {
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {status === "auth_failure"
-                  ? "Oturum geçersiz sayıldı. QR kod otomatik yenileniyor."
+                  ? "Oturum geçersiz. QR kod otomatik yenileniyor."
                   : "WhatsApp istemcisi başlatılıyor, lütfen bekleyin."}
               </p>
             </div>
@@ -188,9 +343,15 @@ export function AdminWhatsApp() {
         </div>
       )}
 
+      {/* ── Bildirim Şablonu Editörü ── */}
+      <div className="border-t border-border pt-6">
+        <TemplateEditor />
+      </div>
+
+      {/* ── Bilgi kutusu ── */}
       <div className="p-4 bg-muted/30 border border-border/50 rounded-xl text-xs text-muted-foreground">
         <p className="font-medium text-foreground mb-1">💡 Nasıl çalışır?</p>
-        <p>QR kodu telefonunuzda taradıktan sonra bu panel <strong>WhatsApp Hattı Aktif</strong> durumuna geçer. Sunucu kapansa bile oturum saklanır, yeniden açıldığında otomatik bağlanır.</p>
+        <p>QR kodu taradıktan sonra bağlantı aktif olur. Sunucu kapansa bile oturum saklanır. Şablon değişkenleri gönderim anında gerçek verilerle değiştirilir.</p>
       </div>
     </div>
   );

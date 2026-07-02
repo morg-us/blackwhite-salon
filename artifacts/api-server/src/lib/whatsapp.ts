@@ -13,6 +13,36 @@ let client: Client | null = null;
 let currentStatus: WhatsAppStatus = "disconnected";
 let currentQr: string | null = null;
 
+export const DEFAULT_TEMPLATE =
+  `🚨 YENİ RANDEVU BİLDİRİMİ 🚨\n` +
+  `👤 Müşteri: {musteri}\n` +
+  `📅 Tarih: {tarih}\n` +
+  `⏰ Saat: {saat}\n` +
+  `✂️ Hizmet: {hizmet}\n` +
+  `📞 Telefon: {telefon}`;
+
+let notificationTemplate: string = DEFAULT_TEMPLATE;
+
+export function getWhatsAppTemplate(): string {
+  return notificationTemplate;
+}
+
+export function setWhatsAppTemplate(tpl: string): void {
+  notificationTemplate = tpl;
+}
+
+export function renderTemplate(
+  tpl: string,
+  vars: { musteri: string; tarih: string; saat: string; hizmet: string; telefon: string }
+): string {
+  return tpl
+    .replace(/\{musteri\}/g, vars.musteri)
+    .replace(/\{tarih\}/g, vars.tarih)
+    .replace(/\{saat\}/g, vars.saat)
+    .replace(/\{hizmet\}/g, vars.hizmet)
+    .replace(/\{telefon\}/g, vars.telefon);
+}
+
 const PUPPETEER_ARGS = [
   "--no-sandbox",
   "--disable-setuid-sandbox",
@@ -54,9 +84,7 @@ export function getWhatsAppClient(): Client | null {
 }
 
 export async function initWhatsApp(): Promise<Client> {
-  if (client) {
-    return client;
-  }
+  if (client) return client;
 
   logger.info("WhatsApp istemcisi başlatılıyor...");
 
@@ -114,12 +142,8 @@ export async function initWhatsApp(): Promise<Client> {
 
 export async function logoutWhatsApp(): Promise<void> {
   if (!client) return;
-  try {
-    await client.logout();
-  } catch { /* ignore */ }
-  try {
-    await client.destroy();
-  } catch { /* ignore */ }
+  try { await client.logout(); } catch { /* ignore */ }
+  try { await client.destroy(); } catch { /* ignore */ }
   client = null;
   currentStatus = "disconnected";
   currentQr = null;
@@ -128,9 +152,7 @@ export async function logoutWhatsApp(): Promise<void> {
 
 export async function destroyWhatsApp(): Promise<void> {
   if (!client) return;
-  try {
-    await client.destroy();
-  } catch { /* ignore */ }
+  try { await client.destroy(); } catch { /* ignore */ }
   client = null;
   currentStatus = "disconnected";
   currentQr = null;
@@ -145,15 +167,9 @@ function normalizeTurkishPhone(raw: string): string {
   return `${digits}@c.us`;
 }
 
-export async function sendWhatsAppMessage(
-  to: string,
-  message: string
-): Promise<boolean> {
+export async function sendWhatsAppMessage(to: string, message: string): Promise<boolean> {
   if (!client || currentStatus !== "ready") {
-    logger.warn(
-      { status: currentStatus },
-      "WhatsApp mesajı gönderilemedi — istemci hazır değil"
-    );
+    logger.warn({ status: currentStatus }, "WhatsApp mesajı gönderilemedi — istemci hazır değil");
     return false;
   }
 
