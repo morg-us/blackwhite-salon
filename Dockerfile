@@ -5,8 +5,9 @@ FROM node:24-slim AS builder
 
 WORKDIR /app
 
-# pnpm kur
-RUN npm install -g pnpm@10
+# pnpm — npm install -g yerine corepack kullan (çok daha az bellek, OOM yaşanmaz)
+# Node.js 24'te corepack dahili gelir, sadece aktive etmek yeterli
+RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
 
 # Workspace konfigürasyonu önce kopyala (bağımlılık önbellekleme için)
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc \
@@ -78,8 +79,8 @@ RUN apt-get update -y && \
 
 WORKDIR /app
 
-# pnpm kur
-RUN npm install -g pnpm@10
+# pnpm — corepack ile kur (OOM riski yok)
+RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
 
 # puppeteer sistem Chromium'u kullansın
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
