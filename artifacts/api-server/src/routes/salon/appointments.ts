@@ -51,13 +51,13 @@ async function notifyStaff(appt: typeof appointmentsTable.$inferSelect) {
 
   if (targets.length === 0) return;
 
-  const buildMsg = (staffName: string) =>
-    `Yeni randevu!\n` +
-    `Personel: ${staffName}\n` +
-    `Müşteri: ${appt.name}\n` +
-    `Tarih: ${appt.date} ${appt.time}\n` +
-    `Hizmet: ${appt.category}\n` +
-    `Tel: ${appt.phone}`;
+  const buildMsg = (_staffName: string) =>
+    `🚨 YENİ RANDEVU BİLDİRİMİ 🚨\n` +
+    `👤 Müşteri: ${appt.name}\n` +
+    `📅 Tarih: ${appt.date}\n` +
+    `⏰ Saat: ${appt.time}\n` +
+    `✂️ Hizmet: ${appt.category}\n` +
+    `📞 Telefon: ${appt.phone}`;
 
   await Promise.all(
     targets.map(async staffUser => {
